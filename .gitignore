@@ -1,0 +1,29 @@
+# PHPMailer dependencies
+/vendor/
+composer.lock
+
+# Banco de dados
+banco_melodias.sqlite
+
+# Uploads
+/uploads/*
+!/uploads/.gitkeep
+
+# Logs
+*.log
+php_error_log
+
+# Cache
+cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

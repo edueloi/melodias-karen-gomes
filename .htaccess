@@ -1,0 +1,35 @@
+# ==========================================
+# CONFIGURAÇÃO DE URLS AMIGÁVEIS - MELODIAS
+# ==========================================
+
+Options -Indexes
+Options -MultiViews
+DirectoryIndex index.php index.html
+
+RewriteEngine On
+
+# --- DETECÇÃO AUTOMÁTICA DE AMBIENTE ---
+# Se for localhost, define o prefixo da pasta do XAMPP
+RewriteCond %{HTTP_HOST} localhost [NC]
+RewriteRule .? - [E=BASE:/karen_site/Site/melodias]
+
+# Se não for localhost (Produção), o prefixo é vazio (raiz)
+RewriteCond %{HTTP_HOST} !localhost [NC]
+RewriteRule .? - [E=BASE:]
+# ---------------------------------------
+
+# 1. REDIRECIONAR .PHP PARA SEM EXTENSÃO (Acesso Direto)
+# Apenas para requisições GET para não quebrar envios de formulários (POST)
+# Usamos a variável %{ENV:BASE} detectada acima no redirecionamento (R=301)
+RewriteCond %{REQUEST_METHOD} GET
+RewriteCond %{ENV:REDIRECT_STATUS} ^$
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteCond %{REQUEST_URI} \.php$
+RewriteRule ^(.+)\.php$ %{ENV:BASE}/$1 [R=301,L,NC]
+
+# 2. MAPEAR URL SEM EXTENSÃO PARA O ARQUIVO .PHP (Interno)
+# Tenta mapear o pedido para o arquivo .php correspondente se ele existir fisicamente
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.*)$ $1.php [L]

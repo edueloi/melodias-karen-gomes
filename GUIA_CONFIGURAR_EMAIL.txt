@@ -1,0 +1,160 @@
+=======================================================
+📧 GUIA DE CONFIGURAÇÃO DE EMAIL - Windows/XAMPP
+=======================================================
+
+PROBLEMA: E-mails não estão sendo enviados automaticamente
+
+SOLUÇÃO 1: Configurar SMTP no php.ini (Rápido - Gmail)
+-------------------------------------------------------
+
+1. Abra o arquivo php.ini:
+   Caminho: C:\xampp\php\php.ini
+
+2. Procure a seção [mail function] e configure:
+
+   [mail function]
+   SMTP=smtp.gmail.com
+   smtp_port=587
+   sendmail_from=contato@karengomes.com.br
+   sendmail_path="\"C:\xampp\sendmail\sendmail.exe\" -t"
+
+3. Abra o arquivo sendmail.ini:
+   Caminho: C:\xampp\sendmail\sendmail.ini
+
+4. Configure o sendmail.ini:
+
+   [sendmail]
+   smtp_server=smtp.gmail.com
+   smtp_port=587
+   auth_username=contato@karengomes.com.br
+   auth_password=sua-senha-de-app-do-gmail
+   force_sender=contato@karengomes.com.br
+
+5. Como obter senha de app do Gmail:
+   - Acesse: https://myaccount.google.com/apppasswords
+   - Faça login no Gmail
+   - Clique em "Criar senha de app"
+   - Escolha "Outro" e digite "XAMPP"
+   - Use a senha gerada (sem espaços) no sendmail.ini
+
+6. Reinicie o Apache no XAMPP
+
+7. Teste aprovando um usuário no sistema
+
+
+SOLUÇÃO 2: Usar PHPMailer (Recomendado - Mais Robusto)
+-------------------------------------------------------
+
+1. Instale o Composer (se ainda não tiver):
+   https://getcomposer.org/download/
+
+2. No terminal, navegue até a pasta do projeto:
+   cd C:\xampp\htdocs\karen_site\Site\melodias
+
+3. Execute:
+   composer require phpmailer/phpmailer
+
+4. Crie um arquivo "email_config.php" na pasta melodias com:
+
+<?php
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require 'vendor/autoload.php';
+
+function enviarEmailPHPMailer($destinatario, $nome_dest, $assunto, $mensagem_html) {
+    $mail = new PHPMailer(true);
+    
+    try {
+        // Configurações do servidor
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'contato@karengomes.com.br';
+        $mail->Password   = 'sua-senha-de-app';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
+        $mail->CharSet    = 'UTF-8';
+        
+        // Remetente e destinatário
+        $mail->setFrom('contato@karengomes.com.br', 'Melodias');
+        $mail->addAddress($destinatario, $nome_dest);
+        $mail->addReplyTo('contato@karengomes.com.br', 'Karen Gomes');
+        
+        // Conteúdo
+        $mail->isHTML(true);
+        $mail->Subject = $assunto;
+        $mail->Body    = $mensagem_html;
+        
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Erro ao enviar email: {$mail->ErrorInfo}");
+        return false;
+    }
+}
+?>
+
+5. No painel.php, inclua o arquivo e use a função no lugar do mail()
+
+
+SOLUÇÃO 3: Usar serviço externo (SendGrid, Mailgun, etc.)
+----------------------------------------------------------
+Se as soluções acima não funcionarem, você pode usar um serviço de email como:
+- SendGrid (100 emails grátis/dia)
+- Mailgun (5000 emails grátis/mês)
+- Mailtrap (para testes)
+
+
+TESTANDO A CONFIGURAÇÃO
+------------------------
+
+1. Crie um arquivo "teste_email.php" na pasta melodias:
+
+<?php
+$destinatario = "seu-email-de-teste@gmail.com";
+$assunto = "Teste de Email XAMPP";
+$mensagem = "<h1>Teste</h1><p>Se você recebeu este email, a configuração está funcionando!</p>";
+$headers = "MIME-Version: 1.0\r\n";
+$headers .= "Content-type: text/html; charset=UTF-8\r\n";
+$headers .= "From: Melodias <contato@karengomes.com.br>\r\n";
+
+if (mail($destinatario, $assunto, $mensagem, $headers)) {
+    echo "✅ E-mail enviado com sucesso!";
+} else {
+    echo "❌ Falha ao enviar e-mail. Verifique as configurações.";
+    echo "<br>SMTP: " . ini_get('SMTP');
+    echo "<br>Porta: " . ini_get('smtp_port');
+}
+?>
+
+2. Acesse: http://localhost/karen_site/Site/melodias/teste_email.php
+
+3. Verifique sua caixa de entrada (e spam)
+
+
+PROBLEMAS COMUNS
+-----------------
+
+❌ Erro: "Could not authenticate"
+   Solução: Verifique a senha de app do Gmail
+
+❌ Erro: "Connection refused"
+   Solução: Verifique se o SMTP e porta estão corretos
+
+❌ Erro: "Sendmail not found"
+   Solução: Verifique o caminho do sendmail no php.ini
+
+❌ Email não chega
+   Solução: Verifique pasta de SPAM
+
+❌ SMTP = localhost no php.ini
+   Solução: Troque para smtp.gmail.com
+
+
+RECOMENDAÇÃO FINAL
+------------------
+Para produção, use PHPMailer (Solução 2) pois é mais confiável,
+possui melhor tratamento de erros e funciona em qualquer servidor.
+
+=======================================================

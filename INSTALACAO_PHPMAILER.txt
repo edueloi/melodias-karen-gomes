@@ -1,0 +1,152 @@
+========================================
+📧 INSTALAÇÃO RÁPIDA - PHPMAILER
+========================================
+
+ATENÇÃO: Este método configura email APENAS para o sistema Melodias,
+SEM afetar outros projetos no XAMPP!
+
+========================================
+PASSO 1: Instalar Composer
+========================================
+
+1. Baixe o Composer:
+   https://getcomposer.org/Composer-Setup.exe
+
+2. Execute o instalador
+   - Clique "Next" em tudo
+   - Deixe as opções padrão
+   - Conclua a instalação
+
+3. Reinicie o terminal/PowerShell se estiver aberto
+
+
+========================================
+PASSO 2: Instalar PHPMailer
+========================================
+
+1. Pressione Win + R
+2. Digite: powershell
+3. Pressione Enter
+4. Cole este comando e pressione Enter:
+
+   cd C:\xampp\htdocs\karen_site\Site\melodias; composer require phpmailer/phpmailer
+
+5. Aguarde a instalação (pode demorar 1-2 minutos)
+6. Quando terminar, você verá uma pasta "vendor" criada
+
+
+========================================
+PASSO 3: Configurar Senha Gmail
+========================================
+
+1. Abra: https://myaccount.google.com/apppasswords
+
+2. Faça login com: contato@karengomes.com.br
+
+3. Se NÃO aparecer a opção, você precisa ativar:
+   - Acesse: https://myaccount.google.com/security
+   - Procure "Verificação em duas etapas"
+   - Ative a verificação
+   - Volte para: https://myaccount.google.com/apppasswords
+
+4. Clique em "Selecionar app" → Escolha "Outro"
+
+5. Digite: Melodias System
+
+6. Clique em "Gerar"
+
+7. Copie a senha gerada (16 caracteres)
+   Exemplo: abcd efgh ijkl mnop
+
+8. Abra o arquivo: 
+   C:\xampp\htdocs\karen_site\Site\melodias\email_config.php
+
+9. Procure a linha:
+   $mail->Password   = 'COLOQUE_SUA_SENHA_DE_APP_AQUI';
+
+10. Substitua por (SEM ESPAÇOS):
+    $mail->Password   = 'abcdefghijklmnop';
+
+11. Salve o arquivo
+
+
+========================================
+PASSO 4: Testar
+========================================
+
+1. Acesse no navegador:
+   http://localhost/karen_site/Site/melodias/teste_phpmailer.php
+
+2. Clique em "Enviar Email de Teste"
+
+3. Se receber o email: ✅ FUNCIONOU!
+
+4. Se não funcionar:
+   - Verifique se copiou a senha correta (sem espaços)
+   - Verifique se o firewall não está bloqueando
+   - Tente desativar antivírus temporariamente
+   - Consulte a seção PROBLEMAS COMUNS abaixo
+
+
+========================================
+PRONTO! COMO USAR
+========================================
+
+Agora quando você aprovar um usuário no painel:
+✅ Email será enviado AUTOMATICAMENTE
+✅ Não precisa configurar mais nada
+✅ Funciona APENAS neste sistema (não afeta outros projetos)
+
+
+========================================
+PROBLEMAS COMUNS
+========================================
+
+❌ "Class 'PHPMailer' not found"
+   → Execute: cd C:\xampp\htdocs\karen_site\Site\melodias; composer require phpmailer/phpmailer
+
+❌ "Could not authenticate"
+   → Senha de app incorreta. Gere uma nova no Gmail
+
+❌ "Connection timed out"
+   → Firewall bloqueando porta 587. Adicione exceção
+
+❌ Composer não encontrado
+   → Reinicie o terminal após instalar o Composer
+
+❌ Email não chega
+   → Verifique pasta SPAM
+   → Aguarde 2-3 minutos
+   → Gmail pode ter delay
+
+
+========================================
+VERIFICAÇÃO RÁPIDA
+========================================
+
+Para saber se está tudo OK:
+
+1. Existe a pasta "vendor" em melodias? 
+   ✅ Sim = PHPMailer instalado
+   ❌ Não = Precisa executar composer install
+
+2. Arquivo email_config.php tem senha configurada?
+   ✅ Sim = Pronto para usar
+   ❌ Não = Configure a senha (Passo 3)
+
+3. teste_phpmailer.php envia email?
+   ✅ Sim = PERFEITO! Tudo funcionando
+   ❌ Não = Revise senha e configuração
+
+
+========================================
+SUPORTE
+========================================
+
+Se nada funcionar:
+1. Tire print do erro em teste_phpmailer.php
+2. Verifique se tem a pasta "vendor" na pasta melodias
+3. Verifique se a senha no email_config.php está sem espaços
+4. Teste com outro email de destino
+
+========================================
