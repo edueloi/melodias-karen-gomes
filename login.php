@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="description" content="Acesse o Sistema de Gestão Melodias. Plataforma exclusiva para membros da rede de saúde mental.">
     <meta property="og:title" content="Login — Melodias">
     <meta property="og:description" content="Plataforma de gestão Melodias.">
-    <meta property="og:image" content="https://melodias.karengomes.com.br/images/share-banner.jpg">
+    <meta property="og:image" content="https://melodias.karengomes.com.br/images/share-banner.png">
     <meta name="robots" content="noindex, nofollow">
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">

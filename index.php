@@ -70,7 +70,7 @@ try {
     <meta name="keywords" content="saúde mental, tatuí, psicólogos, psiquiatras, profissionais de saúde, melodias">
     <meta property="og:title" content="Melodias - Rede de Profissionais em Saúde Mental">
     <meta property="og:description" content="Conecte-se com os melhores profissionais de saúde mental da região de Tatuí.">
-    <meta property="og:image" content="https://melodias.karengomes.com.br/images/share-banner.jpg">
+    <meta property="og:image" content="https://melodias.karengomes.com.br/images/share-banner.png">
     <meta property="og:url" content="https://melodias.karengomes.com.br/">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">

@@ -196,29 +196,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if ($acao === 'edit_comentario') {
-        $comentario_id = $_POST['comentario_id'];
-        $novo_texto = sanitize($_POST['comentario']);
-        
-        // Verifica se é o autor ou admin
-        $stmt = $pdo->prepare("SELECT user_id FROM forum_comentarios WHERE id = ?");
-        $stmt->execute([$comentario_id]);
-        $coment = $stmt->fetch();
-        
-        if ($coment && ($coment['user_id'] == $id_usuario || $role === ROLE_ADMIN || $role === ROLE_SUPERADMIN)) {
-            $pdo->prepare("UPDATE forum_comentarios SET comentario = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$novo_texto, $comentario_id]);
-            $notificacao = "showToast('Atualizado', 'Comentário editado com sucesso!', 'success');";
+    
+    // --- GESTÃO DE PERFIL ---
+    if ($acao === 'update_perfil') {
+        try {
+            $nome = sanitize($_POST['nome']);
+            $whatsapp = sanitize($_POST['whatsapp']);
+            $especialidade = sanitize($_POST['especialidade']);
+            $registro_tipo = sanitize($_POST['registro_tipo']);
+            $registro_numero = sanitize($_POST['registro_numero']);
+            $area_atuacao = sanitize($_POST['area_atuacao']);
+            $formacao_superior = sanitize($_POST['formacao_superior']);
+            $instagram = sanitize($_POST['instagram']);
+            $website = sanitize($_POST['website']);
+            $bio = trim($_POST['bio'] ?? '');
+            
+            // Formações (Pós)
+            $pos = $_POST['formacao_pos'] ?? [];
+            $pos = array_filter(array_map('sanitize', $pos));
+            $formacao_pos_json = json_encode(array_values($pos));
+
+            try {
+                $stmt = $pdo->prepare("UPDATE profissionais SET 
+                    nome = ?, whatsapp = ?, especialidade = ?, registro_tipo = ?, 
+                    registro_numero = ?, area_atuacao = ?, formacao_superior = ?, 
+                    formacao_pos = ?, instagram = ?, website = ?, bio = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?");
+                $stmt->execute([
+                    $nome, $whatsapp, $especialidade, $registro_tipo,
+                    $registro_numero, $area_atuacao, $formacao_superior,
+                    $formacao_pos_json, $instagram, $website, $bio,
+                    $id_usuario
+                ]);
+            } catch (PDOException $e) {
+                // Fallback se updated_at não existir
+                $stmt = $pdo->prepare("UPDATE profissionais SET 
+                    nome = ?, whatsapp = ?, especialidade = ?, registro_tipo = ?, 
+                    registro_numero = ?, area_atuacao = ?, formacao_superior = ?, 
+                    formacao_pos = ?, instagram = ?, website = ?, bio = ?
+                    WHERE id = ?");
+                $stmt->execute([
+                    $nome, $whatsapp, $especialidade, $registro_tipo,
+                    $registro_numero, $area_atuacao, $formacao_superior,
+                    $formacao_pos_json, $instagram, $website, $bio,
+                    $id_usuario
+                ]);
+            }
+
+            $_SESSION['nome_usuario'] = $nome;
+            $notificacao = "showToast('Perfil Atualizado', 'Seus dados foram salvos com sucesso!', 'success');";
+        } catch (Exception $e) {
+            $notificacao = "showToast('Erro', 'Falha ao salvar: ".$e->getMessage()."', 'error');";
         }
+        $user = getUsuarioLogado();
     }
 
-    if ($acao === 'delete_comentario') {
-        $comentario_id = $_POST['comentario_id'];
-        
-        // Apenas admin pode deletar (conforme pedido: 'admin pode deletar todos')
-        if ($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN) {
-            $pdo->prepare("DELETE FROM forum_comentarios WHERE id = ?")->execute([$comentario_id]);
-            $notificacao = "showToast('Excluído', 'Comentário removido pelo moderador.', 'success');";
+    if ($acao === 'upload_foto_perfil') {
+        if (isset($_FILES['foto']) && $_FILES['foto']['error'] === 0) {
+            $max_size = 5 * 1024 * 1024;
+            if ($_FILES['foto']['size'] > $max_size) {
+                $notificacao = "showToast('Erro', 'Arquivo muito grande! Máximo 5MB.', 'error');";
+            } else {
+                $ext = strtolower(pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION));
+                $permitidos = ['jpg', 'jpeg', 'png', 'webp'];
+                if (in_array($ext, $permitidos)) {
+                    if (!empty($user['foto']) && file_exists($user['foto'])) @unlink($user['foto']);
+                    
+                    $new_name = 'uploads/profile_' . $id_usuario . '_' . time() . '.' . $ext;
+                    if (!is_dir('uploads')) mkdir('uploads', 0755, true);
+                    if (move_uploaded_file($_FILES['foto']['tmp_name'], $new_name)) {
+                        try {
+                            $pdo->prepare("UPDATE profissionais SET foto = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$new_name, $id_usuario]);
+                        } catch(Exception $e) {
+                            $pdo->prepare("UPDATE profissionais SET foto = ? WHERE id = ?")->execute([$new_name, $id_usuario]);
+                        }
+                        $notificacao = "showToast('Foto Atualizada', 'Sua nova foto já foi salva.', 'success');";
+                    }
+                } else {
+                    $notificacao = "showToast('Erro', 'Formato inválido. Use JPG, PNG ou WebP.', 'error');";
+                }
+            }
         }
+        $user = getUsuarioLogado();
+    }
+
+    if ($acao === 'delete_foto_perfil') {
+        if (!empty($user['foto']) && file_exists($user['foto'])) @unlink($user['foto']);
+        try {
+            $pdo->prepare("UPDATE profissionais SET foto = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$id_usuario]);
+        } catch(Exception $e) {
+            $pdo->prepare("UPDATE profissionais SET foto = NULL WHERE id = ?")->execute([$id_usuario]);
+        }
+        $notificacao = "showToast('Foto Removida', 'Sua foto de perfil foi excluída.', 'info');";
+        $user = getUsuarioLogado();
     }
 
     // =========== AÇÕES DE ADMIN E SUPERADMIN ===========
@@ -319,78 +390,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $notificacao = "showToast('Excluído', 'Material removido com sucesso!', 'error');";
         }
 
-        // --- GESTÃO DE PERFIL ---
-        if ($acao === 'update_perfil') {
-            try {
-                $nome = sanitize($_POST['nome']);
-                $whatsapp = sanitize($_POST['whatsapp']);
-                $especialidade = sanitize($_POST['especialidade']);
-                $registro_tipo = sanitize($_POST['registro_tipo']);
-                $registro_numero = sanitize($_POST['registro_numero']);
-                $area_atuacao = sanitize($_POST['area_atuacao']);
-                $formacao_superior = sanitize($_POST['formacao_superior']);
-                $instagram = sanitize($_POST['instagram']);
-                $website = sanitize($_POST['website']);
-                $bio = trim($_POST['bio'] ?? '');
-                
-                // Formações (Pós)
-                $pos = $_POST['formacao_pos'] ?? [];
-                $pos = array_filter(array_map('sanitize', $pos));
-                $formacao_pos_json = json_encode(array_values($pos));
 
-                $stmt = $pdo->prepare("UPDATE profissionais SET 
-                    nome = ?, whatsapp = ?, especialidade = ?, registro_tipo = ?, 
-                    registro_numero = ?, area_atuacao = ?, formacao_superior = ?, 
-                    formacao_pos = ?, instagram = ?, website = ?, bio = ?,
-                    updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ?");
-                
-                $stmt->execute([
-                    $nome, $whatsapp, $especialidade, $registro_tipo,
-                    $registro_numero, $area_atuacao, $formacao_superior,
-                    $formacao_pos_json, $instagram, $website, $bio,
-                    $id_usuario
-                ]);
-
-                $_SESSION['nome_usuario'] = $nome;
-                $notificacao = "showToast('Perfil Atualizado', 'Seus dados foram salvos com sucesso!', 'success');";
-            } catch (Exception $e) {
-                $notificacao = "showToast('Erro', 'Falha ao salvar: ".$e->getMessage()."', 'error');";
-            }
-            $user = getUsuarioLogado();
-        }
-
-        if ($acao === 'upload_foto_perfil') {
-            if (isset($_FILES['foto']) && $_FILES['foto']['error'] === 0) {
-                $max_size = 5 * 1024 * 1024;
-                if ($_FILES['foto']['size'] > $max_size) {
-                    $notificacao = "showToast('Erro', 'Arquivo muito grande! Máximo 5MB.', 'error');";
-                } else {
-                    $ext = strtolower(pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION));
-                    $permitidos = ['jpg', 'jpeg', 'png', 'webp'];
-                    if (in_array($ext, $permitidos)) {
-                        if (!empty($user['foto']) && file_exists($user['foto'])) @unlink($user['foto']);
-                        
-                        $new_name = 'uploads/profile_' . $id_usuario . '_' . time() . '.' . $ext;
-                        if (!is_dir('uploads')) mkdir('uploads', 0755, true);
-                        if (move_uploaded_file($_FILES['foto']['tmp_name'], $new_name)) {
-                            $pdo->prepare("UPDATE profissionais SET foto = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$new_name, $id_usuario]);
-                            $notificacao = "showToast('Foto Atualizada', 'Sua nova foto já foi salva.', 'success');";
-                        }
-                    } else {
-                        $notificacao = "showToast('Erro', 'Formato inválido. Use JPG, PNG ou WebP.', 'error');";
-                    }
-                }
-            }
-            $user = getUsuarioLogado();
-        }
-
-        if ($acao === 'delete_foto_perfil') {
-            if (!empty($user['foto']) && file_exists($user['foto'])) @unlink($user['foto']);
-            $pdo->prepare("UPDATE profissionais SET foto = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?")->execute([$id_usuario]);
-            $notificacao = "showToast('Foto Removida', 'Sua foto de perfil foi excluída.', 'info');";
-            $user = getUsuarioLogado();
-        }
         
         // --- SUGESTÕES ---
         if ($acao === 'status_sugestao') {
@@ -413,9 +413,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $whatsapp_msg = $_POST['whatsapp_mensagem_template'] ?? '';
             
             // Atualiza configurações
-            $stmt = $pdo->prepare("UPDATE configuracoes SET valor = ?, updated_at = CURRENT_TIMESTAMP WHERE chave = ?");
-            $stmt->execute([$whatsapp_auto, 'whatsapp_auto_abrir']);
-            $stmt->execute([$whatsapp_msg, 'whatsapp_mensagem_template']);
+            try {
+                $stmt = $pdo->prepare("UPDATE configuracoes SET valor = ?, updated_at = CURRENT_TIMESTAMP WHERE chave = ?");
+                $stmt->execute([$whatsapp_auto, 'whatsapp_auto_abrir']);
+                $stmt->execute([$whatsapp_msg, 'whatsapp_mensagem_template']);
+            } catch (PDOException $e) {
+                $stmt = $pdo->prepare("UPDATE configuracoes SET valor = ? WHERE chave = ?");
+                $stmt->execute([$whatsapp_auto, 'whatsapp_auto_abrir']);
+                $stmt->execute([$whatsapp_msg, 'whatsapp_mensagem_template']);
+            }
             
             $notificacao = "showToast('Salvo', 'Configurações atualizadas com sucesso!', 'success');";
         }
@@ -732,7 +738,7 @@ $banco_desatualizado = false;
     <meta property="og:title" content="Melodias | Sistema de Gestão">
     <meta property="og:description" content="Plataforma de gestão premium do grupo Melodias.">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="images/logo-melodias.png">
+    <meta property="og:image" content="https://melodias.karengomes.com.br/images/share-banner.png">
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="images/favicon.png">
