@@ -103,6 +103,24 @@ function logout() {
 }
 
 /**
+ * Formata o nome da profissão de acordo com o gênero
+ */
+function formatarProfissao($especialidade, $genero) {
+    if ($genero !== 'Feminino') return $especialidade;
+    
+    $map = [
+        'Psicólogo' => 'Psicóloga',
+        'Médico' => 'Médica',
+        'Enfermeiro' => 'Enfermeira',
+        'Psicopedagogo' => 'Psicopedagoga',
+        'Neuropsicólogo' => 'Neuropsicóloga',
+        'Fonoaudiólogo' => 'Fonoaudióloga'
+    ];
+    
+    return $map[$especialidade] ?? $especialidade;
+}
+
+/**
  * Retorna dados do usuário logado
  */
 function getUsuarioLogado() {

@@ -87,6 +87,7 @@ try {
     try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN formacao_pos TEXT"); } catch(Exception $e){}
     try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN instagram TEXT"); } catch(Exception $e){}
     try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN website TEXT"); } catch(Exception $e){}
+    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN genero TEXT DEFAULT 'Não declarado'"); } catch(Exception $e){}
     try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e){}
     try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e){}
     
@@ -202,6 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $nome = sanitize($_POST['nome']);
             $whatsapp = sanitize($_POST['whatsapp']);
+            $genero = sanitize($_POST['genero'] ?? 'Não declarado');
             $especialidade = sanitize($_POST['especialidade']);
             $registro_tipo = sanitize($_POST['registro_tipo']);
             $registro_numero = sanitize($_POST['registro_numero']);
@@ -218,13 +220,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             try {
                 $stmt = $pdo->prepare("UPDATE profissionais SET 
-                    nome = ?, whatsapp = ?, especialidade = ?, registro_tipo = ?, 
+                    nome = ?, whatsapp = ?, genero = ?, especialidade = ?, registro_tipo = ?, 
                     registro_numero = ?, area_atuacao = ?, formacao_superior = ?, 
                     formacao_pos = ?, instagram = ?, website = ?, bio = ?,
                     updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?");
                 $stmt->execute([
-                    $nome, $whatsapp, $especialidade, $registro_tipo,
+                    $nome, $whatsapp, $genero, $especialidade, $registro_tipo,
                     $registro_numero, $area_atuacao, $formacao_superior,
                     $formacao_pos_json, $instagram, $website, $bio,
                     $id_usuario
@@ -232,12 +234,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (PDOException $e) {
                 // Fallback se updated_at não existir
                 $stmt = $pdo->prepare("UPDATE profissionais SET 
-                    nome = ?, whatsapp = ?, especialidade = ?, registro_tipo = ?, 
+                    nome = ?, whatsapp = ?, genero = ?, especialidade = ?, registro_tipo = ?, 
                     registro_numero = ?, area_atuacao = ?, formacao_superior = ?, 
                     formacao_pos = ?, instagram = ?, website = ?, bio = ?
                     WHERE id = ?");
                 $stmt->execute([
-                    $nome, $whatsapp, $especialidade, $registro_tipo,
+                    $nome, $whatsapp, $genero, $especialidade, $registro_tipo,
                     $registro_numero, $area_atuacao, $formacao_superior,
                     $formacao_pos_json, $instagram, $website, $bio,
                     $id_usuario
@@ -250,6 +252,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $notificacao = "showToast('Erro', 'Falha ao salvar: ".$e->getMessage()."', 'error');";
         }
         $user = getUsuarioLogado();
+    }
+
+    // --- ALTERAR SENHA ---
+    if ($acao === 'change_password') {
+        try {
+            $senha_atual = $_POST['senha_atual'] ?? '';
+            $nova_senha = $_POST['nova_senha'] ?? '';
+            $confirma_senha = $_POST['confirma_senha'] ?? '';
+
+            if (empty($senha_atual) || empty($nova_senha) || empty($confirma_senha)) {
+                throw new Exception("Todos os campos de senha são obrigatórios.");
+            }
+            if (strlen($nova_senha) < 8) {
+                throw new Exception("A nova senha deve ter pelo menos 8 caracteres.");
+            }
+            if ($nova_senha !== $confirma_senha) {
+                throw new Exception("A nova senha e a confirmação não coincidem.");
+            }
+
+            // Busca senha atual no banco
+            $stmt = $pdo->prepare("SELECT senha FROM profissionais WHERE id = ?");
+            $stmt->execute([$id_usuario]);
+            $user_db = $stmt->fetch();
+
+            if (!$user_db || !verifyPassword($senha_atual, $user_db['senha'])) {
+                throw new Exception("A senha atual digitada está incorreta.");
+            }
+
+            $novoHash = hashPassword($nova_senha);
+            try {
+                $stmt = $pdo->prepare("UPDATE profissionais SET senha = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+                $stmt->execute([$novoHash, $id_usuario]);
+            } catch (PDOException $e) {
+                $stmt = $pdo->prepare("UPDATE profissionais SET senha = ? WHERE id = ?");
+                $stmt->execute([$novoHash, $id_usuario]);
+            }
+
+            $notificacao = "showToast('Sucesso', 'Sua senha foi alterada com sucesso!', 'success');";
+        } catch (Exception $e) {
+            $notificacao = "showToast('Erro', '".$e->getMessage()."', 'error');";
+        }
     }
 
     if ($acao === 'upload_foto_perfil') {
@@ -441,6 +484,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nome = sanitize($_POST['nome']);
             $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
             $senha = $_POST['senha'];
+            $genero = sanitize($_POST['genero'] ?? 'Não declarado');
             $especialidade = sanitize($_POST['especialidade'] ?? '');
             $whatsapp = sanitize($_POST['whatsapp'] ?? '');
             $role_novo = $_POST['role'];
@@ -452,8 +496,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notificacao = "showToast('Erro', 'Este e-mail já está cadastrado!', 'error');";
             } else {
                 $senhaHash = hashPassword($senha);
-                $stmt = $pdo->prepare("INSERT INTO profissionais (nome, email, senha, especialidade, whatsapp, role, status) VALUES (?, ?, ?, ?, ?, ?, 'ativo')");
-                $stmt->execute([$nome, $email, $senhaHash, $especialidade, $whatsapp, $role_novo]);
+                $stmt = $pdo->prepare("INSERT INTO profissionais (nome, email, senha, genero, especialidade, whatsapp, role, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'ativo')");
+                $stmt->execute([$nome, $email, $senhaHash, $genero, $especialidade, $whatsapp, $role_novo]);
                 $notificacao = "showToast('Sucesso', 'Novo usuário criado com sucesso!', 'success');";
             }
         }
@@ -463,6 +507,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id_user = $_POST['id_user'];
             $nome = sanitize($_POST['nome']);
             $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
+            $genero = sanitize($_POST['genero'] ?? 'Não declarado');
             $especialidade = sanitize($_POST['especialidade'] ?? '');
             $whatsapp = sanitize($_POST['whatsapp'] ?? '');
             $role_novo = $_POST['role'];
@@ -475,21 +520,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 try {
                     if (!empty($nova_senha)) {
                         $senhaHash = hashPassword($nova_senha);
-                        $stmt = $pdo->prepare("UPDATE profissionais SET nome = ?, email = ?, senha = ?, especialidade = ?, whatsapp = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
-                        $stmt->execute([$nome, $email, $senhaHash, $especialidade, $whatsapp, $role_novo, $id_user]);
+                        $stmt = $pdo->prepare("UPDATE profissionais SET nome = ?, email = ?, senha = ?, genero = ?, especialidade = ?, whatsapp = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+                        $stmt->execute([$nome, $email, $senhaHash, $genero, $especialidade, $whatsapp, $role_novo, $id_user]);
                     } else {
-                        $stmt = $pdo->prepare("UPDATE profissionais SET nome = ?, email = ?, especialidade = ?, whatsapp = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
-                        $stmt->execute([$nome, $email, $especialidade, $whatsapp, $role_novo, $id_user]);
+                        $stmt = $pdo->prepare("UPDATE profissionais SET nome = ?, email = ?, genero = ?, especialidade = ?, whatsapp = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+                        $stmt->execute([$nome, $email, $genero, $especialidade, $whatsapp, $role_novo, $id_user]);
                     }
                 } catch (PDOException $e) {
                     // Fallback: banco sem coluna updated_at
                     if (!empty($nova_senha)) {
                         $senhaHash = hashPassword($nova_senha);
-                        $stmt = $pdo->prepare("UPDATE profissionais SET nome = ?, email = ?, senha = ?, especialidade = ?, whatsapp = ?, role = ? WHERE id = ?");
-                        $stmt->execute([$nome, $email, $senhaHash, $especialidade, $whatsapp, $role_novo, $id_user]);
+                        $stmt = $pdo->prepare("UPDATE profissionais SET nome = ?, email = ?, senha = ?, genero = ?, especialidade = ?, whatsapp = ?, role = ? WHERE id = ?");
+                        $stmt->execute([$nome, $email, $senhaHash, $genero, $especialidade, $whatsapp, $role_novo, $id_user]);
                     } else {
-                        $stmt = $pdo->prepare("UPDATE profissionais SET nome = ?, email = ?, especialidade = ?, whatsapp = ?, role = ? WHERE id = ?");
-                        $stmt->execute([$nome, $email, $especialidade, $whatsapp, $role_novo, $id_user]);
+                        $stmt = $pdo->prepare("UPDATE profissionais SET nome = ?, email = ?, genero = ?, especialidade = ?, whatsapp = ?, role = ? WHERE id = ?");
+                        $stmt->execute([$nome, $email, $genero, $especialidade, $whatsapp, $role_novo, $id_user]);
                     }
                 }
                 $notificacao = "showToast('Atualizado', 'Dados do usuário atualizados!', 'success');";
@@ -558,8 +603,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$usuario) {
                 $notificacao = "showToast('Erro', 'Usuário não encontrado!', 'error');";
             } else {
-                // Senha temporária = número de WhatsApp
-                $senha_temp = $usuario['whatsapp'];
+                // Senha temporária padrão
+                $senha_temp = 'melodias123';
                 $senhaHash = hashPassword($senha_temp);
                 
                 try {
@@ -616,11 +661,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </div>
                                 <div class='credential-item'>
                                     <span class='credential-label'>🔑 Senha Temporária:</span><br>
-                                    <span class='credential-value'>$whatsapp</span>
+                                    <span class='credential-value'>melodias123</span>
                                 </div>
                             </div>
                             
-                            <p><strong>⚠️ Importante:</strong> Sua senha temporária é o seu número de WhatsApp. Por segurança, recomendamos que você altere sua senha após o primeiro acesso.</p>
+                            <p><strong>⚠️ Importante:</strong> Sua senha temporária é <code>melodias123</code>. Por segurança, é obrigatório alterar sua senha após o primeiro acesso.</p>
                             
                             <p>No painel você poderá:</p>
                             <ul>
@@ -1608,6 +1653,10 @@ $banco_desatualizado = false;
                                 <i class="fa-solid fa-user-circle"></i>
                                 Meu Perfil
                             </a>
+                            <a href="#" onclick="openModal('modalTrocarSenha'); return false;" class="dropdown-item">
+                                <i class="fa-solid fa-key"></i>
+                                Trocar Senha
+                            </a>
                             <a href="?page=biblioteca" class="dropdown-item">
                                 <i class="fa-solid fa-book"></i>
                                 Biblioteca
@@ -2415,6 +2464,14 @@ elseif ($pagina === 'perfil'):
 
                     <div class="form-grid">
                         <div class="input-group">
+                            <label>Gênero <span style="color:red">*</span></label>
+                            <select name="genero" class="input-control premium-input" required>
+                                <option value="Masculino" <?php echo ($user_p['genero'] ?? '') === 'Masculino' ? 'selected' : ''; ?>>Masculino</option>
+                                <option value="Feminino" <?php echo ($user_p['genero'] ?? '') === 'Feminino' ? 'selected' : ''; ?>>Feminino</option>
+                                <option value="Não declarado" <?php echo ($user_p['genero'] ?? '') === 'Não declarado' ? 'selected' : ''; ?>>Não declarado</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
                             <label>Sua Profissão Principal <span style="color:red">*</span></label>
                             <select name="especialidade" class="input-control premium-input" onchange="updateRegistrationType(this.value)" id="main_profession" required>
                                 <option value="">Selecione sua área...</option>
@@ -2658,7 +2715,7 @@ elseif ($pagina === 'membros'):
                 <div style="padding: 15px 20px 25px; text-align: center; flex: 1; display: flex; flex-direction: column;">
                     <h3 style="margin: 0; font-size: 1.15em; font-weight: 800; color: var(--primary);"><?php echo htmlspecialchars($m['nome']); ?></h3>
                     <div style="font-size: 0.82em; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin: 5px 0 12px; letter-spacing: 0.5px;">
-                        <?php echo htmlspecialchars($m['especialidade']); ?>
+                        <?php echo htmlspecialchars(formatarProfissao($m['especialidade'], $m['genero'] ?? '')); ?>
                     </div>
                     
                     <?php if(!empty($m['registro_numero'])): ?>
@@ -3203,7 +3260,7 @@ Olá {NOME}, sua solicitação foi *aprovada*!
 {EMAIL}
 
 🔑 *Senha Temporária:*
-{SENHA}
+melodias123
 
 ⚠️ _Recomendamos trocar sua senha após o primeiro acesso._
 
@@ -3257,7 +3314,7 @@ elseif ($pagina === 'usuarios'):
                                         <div>
                                             <strong><?php echo $u['nome']; ?></strong>
                                             <div style="font-size: 0.8em; color: var(--text-muted);">
-                                                <?php echo $u['especialidade'] ?? 'Sem especialidade'; ?>
+                                                <?php echo htmlspecialchars(formatarProfissao($u['especialidade'] ?? 'Sem especialidade', $u['genero'] ?? '')); ?>
                                             </div>
                                         </div>
                                     </div>
@@ -3355,6 +3412,14 @@ elseif ($pagina === 'usuarios'):
                                            placeholder="Ex: Psicólogo Clínico">
                                 </div>
                                 <div class="input-group">
+                                    <label>Gênero</label>
+                                    <select name="genero" class="input-control">
+                                        <option value="Masculino">Masculino</option>
+                                        <option value="Feminino">Feminino</option>
+                                        <option value="Não declarado" selected>Não declarado</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
                                     <label>WhatsApp</label>
                                     <input type="text" name="whatsapp" class="input-control" 
                                            placeholder="(15) 99999-9999">
@@ -3409,6 +3474,14 @@ elseif ($pagina === 'usuarios'):
                                 <div class="input-group">
                                     <label>Especialidade</label>
                                     <input type="text" name="especialidade" id="edit_user_especialidade" class="input-control">
+                                </div>
+                                <div class="input-group">
+                                    <label>Gênero</label>
+                                    <select name="genero" id="edit_user_genero" class="input-control">
+                                        <option value="Masculino">Masculino</option>
+                                        <option value="Feminino">Feminino</option>
+                                        <option value="Não declarado">Não declarado</option>
+                                    </select>
                                 </div>
                                 <div class="input-group">
                                     <label>WhatsApp</label>
@@ -3921,6 +3994,36 @@ else: ?>
         </main>
     </div>
 
+    <!-- Modal: Trocar Senha -->
+    <div class="modal-overlay" id="modalTrocarSenha">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-key"></i> Alterar Senha</h2>
+                <button class="close-modal" onclick="closeModal('modalTrocarSenha')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST">
+                    <input type="hidden" name="acao" value="change_password">
+                    <div class="input-group">
+                        <label>Senha Atual</label>
+                        <input type="password" name="senha_atual" class="input-control" required placeholder="Sua senha atual">
+                    </div>
+                    <div class="input-group">
+                        <label>Nova Senha (mínimo 8 caracteres)</label>
+                        <input type="password" name="nova_senha" class="input-control" required minlength="8" placeholder="Novas senha">
+                    </div>
+                    <div class="input-group">
+                        <label>Confirmar Nova Senha</label>
+                        <input type="password" name="confirma_senha" class="input-control" required minlength="8" placeholder="Repita a nova senha">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fa-solid fa-save"></i> Atualizar Senha
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
@@ -4133,6 +4236,7 @@ else: ?>
             document.getElementById('edit_user_id').value = dados.id;
             document.getElementById('edit_user_nome').value = dados.nome;
             document.getElementById('edit_user_email').value = dados.email;
+            document.getElementById('edit_user_genero').value = dados.genero || 'Não declarado';
             document.getElementById('edit_user_especialidade').value = dados.especialidade || '';
             document.getElementById('edit_user_whatsapp').value = dados.whatsapp || '';
             document.getElementById('edit_user_role').value = dados.role;
@@ -4201,7 +4305,7 @@ else: ?>
                            `👤 Nome: <b>${nome}</b><br>` +
                            `📧 E-mail: <b>${email}</b><br><br>` +
                            `<div style='background:rgba(0,0,0,0.03);padding:15px;border-radius:10px;font-size:0.9em;'>` +
-                           `🔑 Senha de Acesso: <b>${whatsapp}</b>` +
+                           `🔑 Senha de Acesso: <b>melodias123</b>` +
                            `</div><br>` +
                            `Deseja confirmar a aprovação?`;
             

@@ -17,6 +17,7 @@ try {
                         email TEXT NOT NULL,
                         whatsapp TEXT NOT NULL,
                         senha TEXT,
+                        genero TEXT DEFAULT 'Não declarado',
                         role INTEGER DEFAULT 1,
                         status TEXT DEFAULT 'ativo',
                         data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -24,11 +25,15 @@ try {
                         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     )";
     $pdo->exec($query_tabela);
+    
+    // Adiciona coluna genero se não existir
+    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN genero TEXT DEFAULT 'Não declarado'"); } catch(Exception $e){}
 
     // Processa o cadastro
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nome = htmlspecialchars($_POST['nome']);
         $especialidade = htmlspecialchars($_POST['especialidade']);
+        $genero = htmlspecialchars($_POST['genero'] ?? 'Não declarado');
         $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
         $whatsapp = htmlspecialchars($_POST['whatsapp']);
 
@@ -40,9 +45,10 @@ try {
             $mensagem = "<div class='alerta erro'>⚠️ Este e-mail já foi cadastrado. Se já é membro, <a href='login' style='color: #6e2b3a; font-weight: bold;'>faça login aqui</a>.</div>";
         } else {
             // Cria usuário com status PENDENTE aguardando aprovação
-            $stmt = $pdo->prepare("INSERT INTO profissionais (nome, especialidade, email, whatsapp, status, role) VALUES (:nome, :especialidade, :email, :whatsapp, 'pendente', 1)");
+            $stmt = $pdo->prepare("INSERT INTO profissionais (nome, especialidade, genero, email, whatsapp, status, role) VALUES (:nome, :especialidade, :genero, :email, :whatsapp, 'pendente', 1)");
             $stmt->bindParam(':nome', $nome);
             $stmt->bindParam(':especialidade', $especialidade);
+            $stmt->bindParam(':genero', $genero);
             $stmt->bindParam(':email', $email);
             $stmt->bindParam(':whatsapp', $whatsapp);
 
@@ -1082,11 +1088,21 @@ try {
                     </div>
                     <div>
                         <label for="especialidade">
-                            <i class="fas fa-briefcase" style="opacity: 0.7; margin-right: 5px;"></i> Profissão e Abordagem
+                            <i class="fas fa-briefcase" style="opacity: 0.7; margin-right: 5px;"></i> Sua Profissão
                         </label>
-                        <input type="text" id="especialidade" name="especialidade" required placeholder="Ex: Psicóloga - TCC"
+                        <input type="text" id="especialidade" name="especialidade" required placeholder="Ex: Psicólogo, Médico, etc."
                                value="<?php echo isset($_POST['especialidade']) ? htmlspecialchars($_POST['especialidade']) : ''; ?>"
                                style="background: #f9fafb;">
+                    </div>
+                    <div>
+                        <label for="genero">
+                            <i class="fas fa-venus-mars" style="opacity: 0.7; margin-right: 5px;"></i> Gênero
+                        </label>
+                        <select id="genero" name="genero" required style="background: #f9fafb; width: 100%; padding: 16px 20px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 1em; font-family: 'Inter', sans-serif;">
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                            <option value="Não declarado" selected>Não declarado</option>
+                        </select>
                     </div>
                     <div>
                         <label for="email">
