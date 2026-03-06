@@ -105,19 +105,28 @@ function logout() {
 /**
  * Formata o nome da profissão de acordo com o gênero
  */
-function formatarProfissao($especialidade, $genero) {
-    if ($genero !== 'Feminino') return $especialidade;
+function formatarProfissao($profissao, $genero) {
+    if (empty($profissao)) return "Profissional";
+    if (empty($genero) || $genero === 'Não declarado') return $profissao;
     
-    $map = [
+    $mapaFeminino = [
         'Psicólogo' => 'Psicóloga',
         'Médico' => 'Médica',
+        'Psiquiatra' => 'Psiquiatra', // Neutro
         'Enfermeiro' => 'Enfermeira',
+        'Fisioterapeuta' => 'Fisioterapeuta', // Neutro
         'Psicopedagogo' => 'Psicopedagoga',
         'Neuropsicólogo' => 'Neuropsicóloga',
+        'Terapeuta Ocupacional' => 'Terapeuta Ocupacional', // Neutro
+        'Assistente Social' => 'Assistente Social', // Neutro
         'Fonoaudiólogo' => 'Fonoaudióloga'
     ];
+
+    if ($genero === 'Feminino' && isset($mapaFeminino[$profissao])) {
+        return $mapaFeminino[$profissao];
+    }
     
-    return $map[$especialidade] ?? $especialidade;
+    return $profissao;
 }
 
 /**

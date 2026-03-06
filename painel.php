@@ -92,9 +92,15 @@ try {
     // Altera materiais para incluir novos campos
     try { $pdo->exec("ALTER TABLE materiais ADD COLUMN descricao TEXT"); } catch(Exception $e){}
     try { $pdo->exec("ALTER TABLE materiais ADD COLUMN tipo TEXT DEFAULT 'material'"); } catch(Exception $e){}
+    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN autor TEXT"); } catch(Exception $e){}
+    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN url_externa TEXT"); } catch(Exception $e){}
+    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN capa TEXT"); } catch(Exception $e){}
+    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN created_by INTEGER"); } catch(Exception $e){}
 
     try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e){}
     try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e){}
+    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e){}
+    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e){}
     
     // Cria tabela de configurações do sistema
     $pdo->exec("CREATE TABLE IF NOT EXISTS configuracoes (
@@ -357,9 +363,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $titulo = sanitize($_POST['titulo']);
             $categoria = sanitize($_POST['categoria']);
             $descricao = sanitize($_POST['descricao'] ?? '');
+            $autor = sanitize($_POST['autor'] ?? '');
+            $url_externa = sanitize($_POST['url_externa'] ?? '');
             $tipo_mat = sanitize($_POST['tipo'] ?? 'material');
             $visibilidade = $_POST['visibilidade'];
-            $caminho = '';
+            $caminho = $url_externa; // Se houver link externo, o caminho padrão é ele
             
             if (!empty($_FILES['arquivo']['name'])) {
                 if (!is_dir('uploads')) mkdir('uploads', 0755, true);
@@ -377,12 +385,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             try {
-                $stmt = $pdo->prepare("INSERT INTO materiais (titulo, categoria, descricao, tipo, caminho, capa, visibilidade, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$titulo, $categoria, $descricao, $tipo_mat, $caminho, $capa, $visibilidade, $id_usuario]);
+                $stmt = $pdo->prepare("INSERT INTO materiais (titulo, categoria, descricao, autor, url_externa, tipo, caminho, capa, visibilidade, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$titulo, $categoria, $descricao, $autor, $url_externa, $tipo_mat, $caminho, $capa, $visibilidade, $id_usuario]);
             } catch (PDOException $e) {
-                // Fallback se colunas novas não existirem (embora tenhamos acabado de adicionar)
-                $stmt = $pdo->prepare("INSERT INTO materiais (titulo, categoria, caminho, visibilidade, created_by) VALUES (?, ?, ?, ?, ?)");
-                $stmt->execute([$titulo, $categoria, $caminho, $visibilidade, $id_usuario]);
+                // Fallback robusto se colunas falharem
+                $stmt = $pdo->prepare("INSERT INTO materiais (titulo, categoria, descricao, autor, url_externa, tipo, caminho, capa, visibilidade, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$titulo, $categoria, $descricao, $autor, $url_externa, $tipo_mat, $caminho, $capa, $visibilidade, $id_usuario]);
             }
             
             $notificacao = "showToast('Sucesso', 'Material adicionado com sucesso!', 'success');";
@@ -393,11 +401,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $titulo = sanitize($_POST['titulo']);
             $categoria = sanitize($_POST['categoria']);
             $descricao = sanitize($_POST['descricao'] ?? '');
+            $autor = sanitize($_POST['autor'] ?? '');
+            $url_externa = sanitize($_POST['url_externa'] ?? '');
             $tipo_mat = sanitize($_POST['tipo'] ?? 'material');
             $visibilidade = $_POST['visibilidade'];
             
             $update_capa_sql = "";
-            $params = [$titulo, $categoria, $descricao, $tipo_mat, $visibilidade];
+            $params = [$titulo, $categoria, $descricao, $autor, $url_externa, $tipo_mat, $visibilidade];
             
             if (!empty($_FILES['capa']['name'])) {
                 if (!is_dir('uploads/capas')) mkdir('uploads/capas', 0755, true);
@@ -418,10 +428,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $params[] = $id_mat;
             
             try {
-                $stmt = $pdo->prepare("UPDATE materiais SET titulo = ?, categoria = ?, descricao = ?, tipo = ?, visibilidade = ?{$update_capa_sql}, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+                $stmt = $pdo->prepare("UPDATE materiais SET titulo = ?, categoria = ?, descricao = ?, autor = ?, url_externa = ?, tipo = ?, visibilidade = ?{$update_capa_sql}, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
                 $stmt->execute($params);
             } catch (PDOException $e) {
-                $stmt = $pdo->prepare("UPDATE materiais SET titulo = ?, categoria = ?, visibilidade = ?{$update_capa_sql} WHERE id = ?");
+                $stmt = $pdo->prepare("UPDATE materiais SET titulo = ?, categoria = ?, descricao = ?, autor = ?, url_externa = ?, tipo = ?, visibilidade = ?{$update_capa_sql} WHERE id = ?");
                 $stmt->execute($params);
             }
             $notificacao = "showToast('Atualizado', 'Material editado!', 'success');";
@@ -1537,6 +1547,9 @@ $banco_desatualizado = false;
                 </a>
                 <a href="?page=biblioteca" class="nav-link <?php if($pagina=='biblioteca') echo 'active';?>">
                     <i class="fa-solid fa-graduation-cap"></i> Aprendizados
+                </a>
+                <a href="?page=materiais_apoio" class="nav-link <?php if($pagina=='materiais_apoio') echo 'active';?>">
+                    <i class="fa-solid fa-file-pdf"></i> Materiais de Apoio
                 </a>
                 <a href="?page=forum" class="nav-link <?php if($pagina=='forum') echo 'active';?>">
                     <i class="fa-solid fa-comments"></i> Fórum
@@ -2780,58 +2793,59 @@ document.querySelectorAll('.progress-bar-fill[data-width]').forEach(el => {
 </script>
 
 <?php 
-// ### PÁGINA: BIBLIOTECA ###
-elseif ($pagina === 'biblioteca'):
+// ### PÁGINAS: APRENDIZADOS E MATERIAIS DE APOIO ###
+elseif ($pagina === 'biblioteca' || $pagina === 'materiais_apoio'):
+    $is_apoio = ($pagina === 'materiais_apoio');
     try {
+        $filter = $is_apoio ? "tipo = 'material'" : "tipo IN ('ebook', 'minicurso', 'indicacao')";
         $sql = ($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN) 
-            ? "SELECT * FROM materiais ORDER BY created_at DESC" 
-            : "SELECT * FROM materiais WHERE visibilidade = 'todos' ORDER BY created_at DESC";
+            ? "SELECT * FROM materiais WHERE {$filter} ORDER BY created_at DESC" 
+            : "SELECT * FROM materiais WHERE {$filter} AND visibilidade = 'todos' ORDER BY created_at DESC";
         $materiais = $pdo->query($sql)->fetchAll();
     } catch (PDOException $e) {
-        // Fallback para bancos antigos sem created_at
+        $filter = $is_apoio ? "tipo = 'material'" : "tipo IN ('ebook', 'minicurso', 'indicacao')";
         $sql = ($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN) 
-            ? "SELECT * FROM materiais ORDER BY id DESC" 
-            : "SELECT * FROM materiais WHERE visibilidade = 'todos' ORDER BY id DESC";
+            ? "SELECT * FROM materiais WHERE {$filter} ORDER BY id DESC" 
+            : "SELECT * FROM materiais WHERE {$filter} AND visibilidade = 'todos' ORDER BY id DESC";
         $materiais = $pdo->query($sql)->fetchAll();
     }
 ?>
                 <div class="page-header-actions">
                     <div>
-                        <h1><i class="fa-solid fa-graduation-cap"></i> Aprendizados & Conhecimento</h1>
-                        <p style="color: var(--text-muted);">E-books, Mini Cursos e Materiais Exclusivos</p>
+                        <h1><i class="fa-solid <?php echo $is_apoio ? 'fa-copy' : 'fa-graduation-cap'; ?>"></i> <?php echo $is_apoio ? 'Materiais de Apoio' : 'Aprendizados & Conhecimento'; ?></h1>
+                        <p style="color: var(--text-muted);"><?php echo $is_apoio ? 'Acesse documentos, anamneses e formulários úteis.' : 'E-books, Mini Cursos e Conteúdos Extras para sua formação.'; ?></p>
                     </div>
                     <div class="input-group" style="margin: 0; min-width: 300px;">
                         <input type="text" id="buscaMaterial" onkeyup="filtrarMateriais()" 
-                               class="input-control" placeholder="🔍 O que você quer aprender hoje?" 
+                               class="input-control" placeholder="🔍 Buscar conteúdo..." 
                                style="border-radius: 30px; box-shadow: var(--shadow);">
                     </div>
                 </div>
 
                 <?php
-                // Agrupa materiais por tipo
-                $materiais_tipos = ['material' => [], 'ebook' => [], 'minicurso' => []];
+                $materiais_tipos = ['material' => [], 'ebook' => [], 'minicurso' => [], 'indicacao' => []];
                 foreach ($materiais as $m) {
                     $t = $m['tipo'] ?? 'material';
-                    if (isset($materiais_tipos[$t])) {
-                        $materiais_tipos[$t][] = $m;
-                    } else {
-                        $materiais_tipos['material'][] = $m;
-                    }
+                    if (isset($materiais_tipos[$t])) $materiais_tipos[$t][] = $m;
                 }
 
-                $secoes = [
-                    ['id' => 'sec_minicurso', 'titulo' => 'Mini Cursos & Masterclasses', 'icon' => 'fa-video', 'tipo' => 'minicurso', 'color' => '#3b82f6'],
-                    ['id' => 'sec_ebook', 'titulo' => 'E-books & Guias Práticos', 'icon' => 'fa-book-open', 'tipo' => 'ebook', 'color' => '#10b981'],
-                    ['id' => 'sec_material', 'titulo' => 'Materiais de Apoio', 'icon' => 'fa-file-lines', 'tipo' => 'material', 'color' => '#6e2b3a']
-                ];
+                if ($is_apoio) {
+                    $secoes = [['id' => 'sec_material', 'titulo' => 'Documentos, Anamneses & Formulários', 'icon' => 'fa-file-pdf', 'tipo' => 'material', 'color' => '#6e2b3a']];
+                } else {
+                    $secoes = [
+                        ['id' => 'sec_ebook', 'titulo' => 'E-books & Guias Práticos', 'icon' => 'fa-book-open', 'tipo' => 'ebook', 'color' => '#10b981'],
+                        ['id' => 'sec_minicurso', 'titulo' => 'Mini Cursos & Masterclasses', 'icon' => 'fa-video', 'tipo' => 'minicurso', 'color' => '#3b82f6'],
+                        ['id' => 'sec_indicacao', 'titulo' => 'Indicações & Conteúdos Extras', 'icon' => 'fa-lightbulb', 'tipo' => 'indicacao', 'color' => '#f59e0b']
+                    ];
+                }
 
                 foreach ($secoes as $secao):
-                    $lista = $materiais_tipos[$secao['tipo']];
+                    $lista = $materiais_tipos[$secao['tipo']] ?? [];
                     if (empty($lista)) continue;
                 ?>
                     <div class="dash-section-title" id="<?php echo $secao['id']; ?>" style="margin-top: 40px; border-bottom: 2px solid <?php echo $secao['color']; ?>; padding-bottom: 10px; display: flex; align-items: center; gap: 12px; color: <?php echo $secao['color']; ?>;">
                         <i class="fa-solid <?php echo $secao['icon']; ?>"></i> <?php echo $secao['titulo']; ?>
-                        <span style="font-size: 0.5em; background: <?php echo $secao['color']; ?>; color: white; padding: 4px 12px; border-radius: 20px; margin-left: auto;">
+                        <span style="font-size: 0.5em; background: <?php echo $secao['color']; ?>22; color: <?php echo $secao['color']; ?>; border: 1px solid <?php echo $secao['color']; ?>44; padding: 4px 12px; border-radius: 20px; margin-left: auto;">
                             <?php echo count($lista); ?> itens
                         </span>
                     </div>
@@ -2840,16 +2854,14 @@ elseif ($pagina === 'biblioteca'):
                         <?php foreach($lista as $m): ?>
                             <div class="card material-item" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.3s ease;">
                                 <?php if(!empty($m['capa'])): ?>
-                                    <div style="position: relative;">
+                                    <div style="position: relative; cursor: pointer;" onclick='abrirPreview(<?php echo json_encode($m); ?>)'>
                                         <img src="<?php echo htmlspecialchars($m['capa']); ?>" alt="Capa" style="width: 100%; height: 180px; object-fit: cover;">
-                                        <?php if($secao['tipo'] === 'minicurso'): ?>
-                                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 3em; text-shadow: 0 4px 10px rgba(0,0,0,0.5); opacity: 0.8;">
-                                                <i class="fa-solid fa-circle-play"></i>
-                                            </div>
-                                        <?php endif; ?>
+                                        <div class="overlay-preview" style="position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; opacity:0; transition:0.3s;">
+                                            <i class="fa-solid fa-eye" style="color:white; font-size:2em;"></i>
+                                        </div>
                                     </div>
                                 <?php else: ?>
-                                    <div style="width: 100%; height: 180px; background: linear-gradient(135deg, <?php echo $secao['color']; ?>22 0%, <?php echo $secao['color']; ?>11 100%); display: flex; align-items: center; justify-content: center; color: <?php echo $secao['color']; ?>; font-size: 4em;">
+                                    <div onclick='abrirPreview(<?php echo json_encode($m); ?>)' style="width: 100%; height: 180px; background: linear-gradient(135deg, <?php echo $secao['color']; ?>22 0%, <?php echo $secao['color']; ?>11 100%); display: flex; align-items: center; justify-content: center; color: <?php echo $secao['color']; ?>; font-size: 4em; cursor: pointer;">
                                         <i class="fa-solid <?php echo $secao['icon']; ?>"></i>
                                     </div>
                                 <?php endif; ?>
@@ -2858,25 +2870,35 @@ elseif ($pagina === 'biblioteca'):
                                     <div style="font-size: 0.75em; text-transform: uppercase; font-weight: 800; color: <?php echo $secao['color']; ?>; letter-spacing: 1px; margin-bottom: 8px;">
                                         <?php echo htmlspecialchars($m['categoria']); ?>
                                     </div>
-                                    <h3 class="card-title material-titulo" style="margin: 0 0 12px 0; font-size: 1.2em; line-height: 1.4; color: var(--text-main);"><?php echo $m['titulo']; ?></h3>
+                                    <h3 class="card-title material-titulo" style="margin: 0 0 12px 0; font-size: 1.15em; line-height: 1.4; color: var(--text-main); font-weight: 700;"><?php echo $m['titulo']; ?></h3>
                                     
+                                    <?php if(!empty($m['autor'])): ?>
+                                        <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                                            <i class="fa-solid fa-user-tie"></i> <?php echo htmlspecialchars($m['autor']); ?>
+                                        </div>
+                                    <?php endif; ?>
+
                                     <?php if(!empty($m['descricao'])): ?>
-                                        <p style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
-                                            <?php echo nl2br(htmlspecialchars($m['descricao'])); ?>
+                                        <p style="font-size: 0.88em; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                            <?php echo htmlspecialchars($m['descricao']); ?>
                                         </p>
                                     <?php endif; ?>
 
-                                    <?php if($m['visibilidade'] === 'admin' && ($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN)): ?>
-                                        <span class="badge badge-warning" style="align-self: flex-start; margin-bottom: 15px;">
-                                            <i class="fa-solid fa-lock"></i> Acesso Restrito
-                                        </span>
-                                    <?php endif; ?>
-
-                                    <div style="margin-top: auto;">
-                                        <a href="<?php echo $m['caminho']; ?>" download class="btn btn-block" style="background: <?php echo $secao['color']; ?>; color: white; font-weight: 700; border-radius: 12px; padding: 12px;">
-                                            <i class="fa-solid <?php echo $secao['tipo'] === 'minicurso' ? 'fa-play' : 'fa-download'; ?>"></i> 
-                                            <?php echo $secao['tipo'] === 'minicurso' ? 'Assistir / Baixar' : 'Acessar Conteúdo'; ?>
-                                        </a>
+                                    <div style="margin-top: auto; display: grid; grid-template-columns: 1fr auto; gap: 10px;">
+                                        <?php 
+                                        $link = $m['url_externa'] ?: $m['caminho'];
+                                        $btn_text = $m['tipo'] === 'minicurso' ? 'Assistir' : ($m['tipo'] === 'ebook' ? 'Ler Online' : 'Visualizar');
+                                        $btn_icon = $m['tipo'] === 'minicurso' ? 'fa-play' : ($m['tipo'] === 'ebook' ? 'fa-book-open' : 'fa-eye');
+                                        ?>
+                                        <button onclick='abrirPreview(<?php echo json_encode($m); ?>)' class="btn" style="background: <?php echo $secao['color']; ?>; color: white; border-radius: 8px; font-weight: 700;">
+                                            <i class="fa-solid <?php echo $btn_icon; ?>"></i> <?php echo $btn_text; ?>
+                                        </button>
+                                        
+                                        <?php if(empty($m['url_externa'])): ?>
+                                            <a href="<?php echo htmlspecialchars($m['caminho']); ?>" download class="btn btn-outline" style="border-radius: 8px; width: 42px; display: flex; align-items: center; justify-content: center; padding: 0;" title="Baixar Arquivo">
+                                                <i class="fa-solid fa-download"></i>
+                                            </a>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -2887,10 +2909,15 @@ elseif ($pagina === 'biblioteca'):
                 <?php if(count($materiais) === 0): ?>
                     <div class="card" style="margin-top: 40px; padding: 60px; text-align: center;">
                         <i class="fa-solid fa-folder-open" style="font-size: 4em; color: var(--text-muted); opacity: 0.2; margin-bottom: 20px;"></i>
-                        <h2 style="color: var(--text-muted);">Nenhum material encontrado</h2>
-                        <p style="color: var(--text-muted);">Fique atento às atualizações do grupo!</p>
+                        <h2 style="color: var(--text-muted);">Nenhum conteúdo por aqui</h2>
+                        <p style="color: var(--text-muted);">Fique atento às atualizações do sistema!</p>
                     </div>
                 <?php endif; ?>
+
+                <style>
+                    .material-item:hover .overlay-preview { opacity: 1 !important; }
+                    .material-item:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
+                </style>
 
 <?php 
 // ### PÁGINA: GESTÃO DE MATERIAIS (ADMIN/SUPERADMIN) ###
@@ -2927,7 +2954,10 @@ elseif ($pagina === 'materiais'):
                             <div style="padding: 20px; flex: 1; display: flex; flex-direction: column;">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
                                     <span class="badge" style="background: rgba(0,0,0,0.05); color: var(--text-muted); text-transform: uppercase; font-size: 0.7em;">
-                                        <?php echo $m['tipo'] ?? 'material'; ?>
+                                        <?php 
+                                            $tl = ['minicurso'=>'🎬 Curso','ebook'=>'📚 E-book','material'=>'📄 Apoio','indicacao'=>'💡 Indica'];
+                                            echo $tl[$m['tipo']??'material'] ?? '📄';
+                                        ?>
                                     </span>
                                     <?php if($m['visibilidade'] === 'admin'): ?>
                                         <span class="badge badge-warning"><i class="fa-solid fa-lock"></i> Restrito</span>
@@ -2985,19 +3015,33 @@ elseif ($pagina === 'materiais'):
                         <div class="modal-body">
                             <form method="POST" enctype="multipart/form-data">
                                 <input type="hidden" name="acao" value="add_material">
-                                <div class="input-group">
-                                     <label>Título do Material *</label>
-                                     <input type="text" name="titulo" class="input-control" required 
-                                            placeholder="Ex: Guia de Transtornos de Ansiedade">
-                                 </div>
                                  <div class="input-group">
-                                     <label>Tipo de Conteúdo *</label>
-                                     <select name="tipo" class="input-control" required>
-                                         <option value="material">📄 Material de Apoio (PDF, Docs)</option>
-                                         <option value="ebook">📚 E-book / Guia Premium</option>
-                                         <option value="minicurso">🎬 Mini Curso / Masterclass</option>
-                                     </select>
-                                 </div>
+                                      <label>Título do Material *</label>
+                                      <input type="text" name="titulo" class="input-control" required 
+                                             placeholder="Ex: Guia de Transtornos de Ansiedade">
+                                  </div>
+                                  <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 0;">
+                                      <div class="input-group">
+                                          <label>Tipo de Conteúdo *</label>
+                                          <select name="tipo" class="input-control" required>
+                                              <option value="material">📄 Material de Apoio (PDF, Docs)</option>
+                                              <option value="ebook">📚 E-book / Guia Premium</option>
+                                              <option value="minicurso">🎬 Mini Curso / Masterclass</option>
+                                          <option value="indicacao">💡 Indicação de Estudo</option>
+                                          <option value="indicacao">💡 Indicação de Estudo</option>
+                                              <option value="indicacao">💡 Indicação de Estudo</option>
+                                          </select>
+                                      </div>
+                                      <div class="input-group">
+                                          <label>Autor / Facilitador</label>
+                                          <input type="text" name="autor" class="input-control" placeholder="Ex: Dra. Karen Gomes">
+                                      </div>
+                                  </div>
+                                  <div class="input-group">
+                                      <label>Link Externo (YouTube, Vimeo, Drive, site externo)</label>
+                                      <input type="url" name="url_externa" class="input-control" placeholder="https://youtube.com/watch?v=...">
+                                      <small style="color: var(--text-muted);">💡 Se for um vídeo ou link externo, cole aqui.</small>
+                                  </div>
                                  <div class="input-group">
                                      <label>Categoria *</label>
                                      <input type="text" name="categoria" class="input-control" required 
@@ -3018,7 +3062,7 @@ elseif ($pagina === 'materiais'):
                                      <label>Arquivo do Documento (PDF, Word, Excel, etc.) *</label>
                                      <div class="file-upload-wrapper">
                                          <label class="file-upload-box">
-                                             <input type="file" name="arquivo" required onchange="this.parentElement.querySelector('.file-name').innerText = this.files[0].name">
+                                             <input type="file" name="arquivo" onchange="this.parentElement.querySelector('.file-name').innerText = this.files[0].name">
                                              <i class="fa-solid fa-file-arrow-up"></i>
                                              <span class="file-name">Clique para escolher o arquivo</span>
                                              <span class="file-hint">Formatos suportados: PDF, DOCX, XLSX...</span>
@@ -3061,13 +3105,24 @@ elseif ($pagina === 'materiais'):
                                      <label>Título do Material *</label>
                                      <input type="text" name="titulo" id="edit_mat_titulo" class="input-control" required>
                                  </div>
+                                 <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 0;">
+                                     <div class="input-group">
+                                         <label>Tipo de Conteúdo *</label>
+                                         <select name="tipo" id="edit_mat_tipo" class="input-control" required>
+                                             <option value="material">📄 Material de Apoio (PDF, Docs)</option>
+                                             <option value="ebook">📚 E-book / Guia Premium</option>
+                                             <option value="minicurso">🎬 Mini Curso / Masterclass</option>
+                                             <option value="indicacao">💡 Indicação de Estudo</option>
+                                         </select>
+                                     </div>
+                                     <div class="input-group">
+                                         <label>Autor / Facilitador</label>
+                                         <input type="text" name="autor" id="edit_mat_autor" class="input-control">
+                                     </div>
+                                 </div>
                                  <div class="input-group">
-                                     <label>Tipo de Conteúdo *</label>
-                                     <select name="tipo" id="edit_mat_tipo" class="input-control" required>
-                                         <option value="material">📄 Material de Apoio (PDF, Docs)</option>
-                                         <option value="ebook">📚 E-book / Guia Premium</option>
-                                         <option value="minicurso">🎬 Mini Curso / Masterclass</option>
-                                     </select>
+                                     <label>Link Externo (YouTube, Vimeo, Drive...)</label>
+                                     <input type="url" name="url_externa" id="edit_mat_url_externa" class="input-control">
                                  </div>
                                  <div class="input-group">
                                      <label>Categoria *</label>
@@ -3099,6 +3154,37 @@ elseif ($pagina === 'materiais'):
                                     <i class="fa-solid fa-save"></i> Salvar Alterações
                                 </button>
                             </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal: Preview / Leitura Online -->
+                <div class="modal-overlay" id="modalPreview">
+                    <div class="modal-content" style="max-width: 95vw; width: 1200px; height: 95vh; display: flex; flex-direction: column; overflow: hidden;">
+                        <div class="modal-header" style="background: var(--bg-card); border-bottom: 1px solid var(--border);">
+                            <h2 id="previewTitle" style="margin: 0; font-size: 1.2em;"><i class="fa-solid fa-eye"></i> Visualização</h2>
+                            <button class="close-modal" onclick="closeModal('modalPreview')">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body" style="flex: 1; padding: 0; overflow: hidden; background: #1a1a1a; position: relative; display: flex; align-items: center; justify-content: center;">
+                            <div id="previewLoader" style="position: absolute; color: white; display: flex; flex-direction: column; align-items: center; gap: 15px; z-index: 10;">
+                                <i class="fa-solid fa-circle-notch fa-spin fa-2x"></i>
+                                <span>Carregando conteúdo...</span>
+                            </div>
+                            <iframe id="previewFrame" style="width: 100%; height: 100%; border: none; display: none; background: white;" onload="this.style.display='block'; document.getElementById('previewLoader').style.display='none';"></iframe>
+                            <div id="previewImageContainer" style="display: none; width: 100%; height: 100%; overflow: auto; padding: 20px; text-align: center;">
+                                <img id="previewImage" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                            </div>
+                            <div id="previewVideoContainer" style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center;">
+                                <video id="previewVideo" controls style="max-width: 100%; max-height: 100%;"></video>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="padding: 15px 25px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                            <div id="previewAuthor" style="color: var(--text-muted); font-size: 0.9em; font-weight: 500;"></div>
+                            <a id="previewDownload" href="#" download class="btn btn-primary" style="padding: 10px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-download"></i> Baixar Original
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -4296,8 +4382,76 @@ else: ?>
         }
         
         function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
+            const modal = document.getElementById(id);
+            modal.classList.remove('active');
             document.body.style.overflow = '';
+            
+            // Se for o modal de preview, para o conteúdo
+            if(id === 'modalPreview') {
+                const frame = document.getElementById('previewFrame');
+                const video = document.getElementById('previewVideo');
+                if(frame) frame.src = '';
+                if(video) { video.pause(); video.src = ''; }
+            }
+        }
+
+        // === PREVIEW DE MATERIAL (LER ONLINE) ===
+        function abrirPreview(m) {
+            const modal = document.getElementById('modalPreview');
+            const frame = document.getElementById('previewFrame');
+            const imgCont = document.getElementById('previewImageContainer');
+            const vidCont = document.getElementById('previewVideoContainer');
+            const loader = document.getElementById('previewLoader');
+            const title = document.getElementById('previewTitle');
+            const author = document.getElementById('previewAuthor');
+            const dl = document.getElementById('previewDownload');
+            
+            // Reset
+            frame.style.display = 'none';
+            imgCont.style.display = 'none';
+            vidCont.style.display = 'none';
+            loader.style.display = 'flex';
+            frame.src = '';
+            
+            title.innerHTML = `<i class="fa-solid fa-eye"></i> Visualizando: ${m.titulo}`;
+            author.innerHTML = m.autor ? `<i class="fa-solid fa-user-tie"></i> Autor: ${m.autor}` : '';
+            
+            const link = m.url_externa || m.caminho;
+            dl.href = link;
+            
+            // Link externo geralmente não é download direto
+            dl.style.display = m.url_externa ? 'none' : 'inline-flex'; 
+            
+            const parts = link.split('.');
+            const ext = parts.length > 1 ? parts.pop().toLowerCase() : '';
+            
+            // YouTube Handler
+            if (m.url_externa && (link.includes('youtube.com') || link.includes('youtu.be'))) {
+                let videoId = '';
+                if (link.includes('youtube.com/watch?v=')) videoId = link.split('v=')[1].split('&')[0];
+                else if (link.includes('youtu.be/')) videoId = link.split('youtu.be/')[1].split('?')[0];
+                frame.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                frame.style.display = 'block';
+            } 
+            // Imagens
+            else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                document.getElementById('previewImage').src = link;
+                imgCont.style.display = 'block';
+                loader.style.display = 'none';
+            } 
+            // Vídeos diretos
+            else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+                document.getElementById('previewVideo').src = link;
+                vidCont.style.display = 'flex';
+                loader.style.display = 'none';
+            } 
+            // PDF e outros (tenta abrir no frame)
+            else {
+                frame.src = link;
+                frame.style.display = 'block';
+            }
+            
+            openModal('modalPreview');
         }
         
         // Fechar modal clicando fora
@@ -4318,6 +4472,23 @@ else: ?>
             }
         });
 
+        // === FILTRAR MATERIAIS ===
+        function filtrarMateriais() {
+            const busca = document.getElementById('buscaMaterial').value.toLowerCase();
+            const itens = document.querySelectorAll('.material-item');
+            
+            itens.forEach(item => {
+                const titulo = item.querySelector('.material-titulo').innerText.toLowerCase();
+                const desc = item.querySelector('p')?.innerText.toLowerCase() || '';
+                
+                if (titulo.includes(busca) || desc.includes(busca)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
         // === EDITAR MATERIAL ===
         function editarMaterial(dados) {
             document.querySelector('#modalEditMaterial form').reset(); 
@@ -4325,6 +4496,8 @@ else: ?>
             document.getElementById('edit_mat_titulo').value = dados.titulo; 
             document.getElementById('edit_mat_categoria').value = dados.categoria; 
             document.getElementById('edit_mat_tipo').value = dados.tipo || 'material'; 
+            document.getElementById('edit_mat_autor').value = dados.autor || ''; 
+            document.getElementById('edit_mat_url_externa').value = dados.url_externa || ''; 
             document.getElementById('edit_mat_descricao').value = dados.descricao || ''; 
             document.getElementById('edit_mat_visibilidade').value = dados.visibilidade; 
             document.querySelectorAll('#modalEditMaterial .file-name').forEach(el => {
