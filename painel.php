@@ -88,6 +88,11 @@ try {
     try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN instagram TEXT"); } catch(Exception $e){}
     try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN website TEXT"); } catch(Exception $e){}
     try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN genero TEXT DEFAULT 'Não declarado'"); } catch(Exception $e){}
+    
+    // Altera materiais para incluir novos campos
+    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN descricao TEXT"); } catch(Exception $e){}
+    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN tipo TEXT DEFAULT 'material'"); } catch(Exception $e){}
+
     try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e){}
     try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e){}
     
@@ -351,6 +356,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($acao === 'add_material') {
             $titulo = sanitize($_POST['titulo']);
             $categoria = sanitize($_POST['categoria']);
+            $descricao = sanitize($_POST['descricao'] ?? '');
+            $tipo_mat = sanitize($_POST['tipo'] ?? 'material');
             $visibilidade = $_POST['visibilidade'];
             $caminho = '';
             
@@ -370,11 +377,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             try {
-                // Tenta inserir com capa
-                $stmt = $pdo->prepare("INSERT INTO materiais (titulo, categoria, caminho, capa, visibilidade, created_by) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$titulo, $categoria, $caminho, $capa, $visibilidade, $id_usuario]);
+                $stmt = $pdo->prepare("INSERT INTO materiais (titulo, categoria, descricao, tipo, caminho, capa, visibilidade, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$titulo, $categoria, $descricao, $tipo_mat, $caminho, $capa, $visibilidade, $id_usuario]);
             } catch (PDOException $e) {
-                // Fallback para tabela sem capa
+                // Fallback se colunas novas não existirem (embora tenhamos acabado de adicionar)
                 $stmt = $pdo->prepare("INSERT INTO materiais (titulo, categoria, caminho, visibilidade, created_by) VALUES (?, ?, ?, ?, ?)");
                 $stmt->execute([$titulo, $categoria, $caminho, $visibilidade, $id_usuario]);
             }
@@ -386,10 +392,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id_mat = $_POST['id_material'];
             $titulo = sanitize($_POST['titulo']);
             $categoria = sanitize($_POST['categoria']);
+            $descricao = sanitize($_POST['descricao'] ?? '');
+            $tipo_mat = sanitize($_POST['tipo'] ?? 'material');
             $visibilidade = $_POST['visibilidade'];
             
             $update_capa_sql = "";
-            $params = [$titulo, $categoria, $visibilidade];
+            $params = [$titulo, $categoria, $descricao, $tipo_mat, $visibilidade];
             
             if (!empty($_FILES['capa']['name'])) {
                 if (!is_dir('uploads/capas')) mkdir('uploads/capas', 0755, true);
@@ -410,10 +418,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $params[] = $id_mat;
             
             try {
-                $stmt = $pdo->prepare("UPDATE materiais SET titulo = ?, categoria = ?, visibilidade = ?{$update_capa_sql}, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+                $stmt = $pdo->prepare("UPDATE materiais SET titulo = ?, categoria = ?, descricao = ?, tipo = ?, visibilidade = ?{$update_capa_sql}, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
                 $stmt->execute($params);
             } catch (PDOException $e) {
-                // Fallback: banco sem coluna updated_at
                 $stmt = $pdo->prepare("UPDATE materiais SET titulo = ?, categoria = ?, visibilidade = ?{$update_capa_sql} WHERE id = ?");
                 $stmt->execute($params);
             }
@@ -2782,51 +2789,100 @@ elseif ($pagina === 'biblioteca'):
 ?>
                 <div class="page-header-actions">
                     <div>
-                        <h1><i class="fa-solid fa-book-bookmark"></i> Biblioteca Digital</h1>
-                        <p style="color: var(--text-muted);">Materiais exclusivos disponíveis para os membros</p>
+                        <h1><i class="fa-solid fa-graduation-cap"></i> Área do Conhecimento</h1>
+                        <p style="color: var(--text-muted);">E-books, Mini Cursos e Materiais Exclusivos</p>
                     </div>
                     <div class="input-group" style="margin: 0; min-width: 300px;">
                         <input type="text" id="buscaMaterial" onkeyup="filtrarMateriais()" 
-                               class="input-control" placeholder="🔍 Buscar por título ou categoria..." 
+                               class="input-control" placeholder="🔍 O que você quer aprender hoje?" 
                                style="border-radius: 30px; box-shadow: var(--shadow);">
                     </div>
                 </div>
-                
-                <div class="grid-cards" id="gridMateriais">
-                    <?php if(count($materiais) > 0): foreach($materiais as $m): ?>
-                        <div class="card material-item" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
-                            <?php if(!empty($m['capa'])): ?>
-                                <img src="<?php echo htmlspecialchars($m['capa']); ?>" alt="Capa" style="width: 100%; height: 160px; object-fit: cover; border-bottom: 1px solid var(--border);">
-                            <?php else: ?>
-                                <div style="width: 100%; height: 160px; background: rgba(239, 68, 68, 0.05); display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 3em; border-bottom: 1px solid var(--border);">
-                                    <i class="fa-solid fa-file-pdf"></i>
+
+                <?php
+                // Agrupa materiais por tipo
+                $materiais_tipos = ['material' => [], 'ebook' => [], 'minicurso' => []];
+                foreach ($materiais as $m) {
+                    $t = $m['tipo'] ?? 'material';
+                    if (isset($materiais_tipos[$t])) {
+                        $materiais_tipos[$t][] = $m;
+                    } else {
+                        $materiais_tipos['material'][] = $m;
+                    }
+                }
+
+                $secoes = [
+                    ['id' => 'sec_minicurso', 'titulo' => 'Mini Cursos & Masterclasses', 'icon' => 'fa-video', 'tipo' => 'minicurso', 'color' => '#3b82f6'],
+                    ['id' => 'sec_ebook', 'titulo' => 'E-books & Guias Práticos', 'icon' => 'fa-book-open', 'tipo' => 'ebook', 'color' => '#10b981'],
+                    ['id' => 'sec_material', 'titulo' => 'Materiais de Apoio', 'icon' => 'fa-file-lines', 'tipo' => 'material', 'color' => '#6e2b3a']
+                ];
+
+                foreach ($secoes as $secao):
+                    $lista = $materiais_tipos[$secao['tipo']];
+                    if (empty($lista)) continue;
+                ?>
+                    <div class="dash-section-title" id="<?php echo $secao['id']; ?>" style="margin-top: 40px; border-bottom: 2px solid <?php echo $secao['color']; ?>; padding-bottom: 10px; display: flex; align-items: center; gap: 12px; color: <?php echo $secao['color']; ?>;">
+                        <i class="fa-solid <?php echo $secao['icon']; ?>"></i> <?php echo $secao['titulo']; ?>
+                        <span style="font-size: 0.5em; background: <?php echo $secao['color']; ?>; color: white; padding: 4px 12px; border-radius: 20px; margin-left: auto;">
+                            <?php echo count($lista); ?> itens
+                        </span>
+                    </div>
+
+                    <div class="grid-cards" id="grid_<?php echo $secao['tipo']; ?>" style="margin-top: 20px;">
+                        <?php foreach($lista as $m): ?>
+                            <div class="card material-item" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.3s ease;">
+                                <?php if(!empty($m['capa'])): ?>
+                                    <div style="position: relative;">
+                                        <img src="<?php echo htmlspecialchars($m['capa']); ?>" alt="Capa" style="width: 100%; height: 180px; object-fit: cover;">
+                                        <?php if($secao['tipo'] === 'minicurso'): ?>
+                                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 3em; text-shadow: 0 4px 10px rgba(0,0,0,0.5); opacity: 0.8;">
+                                                <i class="fa-solid fa-circle-play"></i>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div style="width: 100%; height: 180px; background: linear-gradient(135deg, <?php echo $secao['color']; ?>22 0%, <?php echo $secao['color']; ?>11 100%); display: flex; align-items: center; justify-content: center; color: <?php echo $secao['color']; ?>; font-size: 4em;">
+                                        <i class="fa-solid <?php echo $secao['icon']; ?>"></i>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <div style="padding: 22px; flex: 1; display: flex; flex-direction: column;">
+                                    <div style="font-size: 0.75em; text-transform: uppercase; font-weight: 800; color: <?php echo $secao['color']; ?>; letter-spacing: 1px; margin-bottom: 8px;">
+                                        <?php echo htmlspecialchars($m['categoria']); ?>
+                                    </div>
+                                    <h3 class="card-title material-titulo" style="margin: 0 0 12px 0; font-size: 1.2em; line-height: 1.4; color: var(--text-main);"><?php echo $m['titulo']; ?></h3>
+                                    
+                                    <?php if(!empty($m['descricao'])): ?>
+                                        <p style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                                            <?php echo nl2br(htmlspecialchars($m['descricao'])); ?>
+                                        </p>
+                                    <?php endif; ?>
+
+                                    <?php if($m['visibilidade'] === 'admin' && ($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN)): ?>
+                                        <span class="badge badge-warning" style="align-self: flex-start; margin-bottom: 15px;">
+                                            <i class="fa-solid fa-lock"></i> Acesso Restrito
+                                        </span>
+                                    <?php endif; ?>
+
+                                    <div style="margin-top: auto;">
+                                        <a href="<?php echo $m['caminho']; ?>" download class="btn btn-block" style="background: <?php echo $secao['color']; ?>; color: white; font-weight: 700; border-radius: 12px; padding: 12px;">
+                                            <i class="fa-solid <?php echo $secao['tipo'] === 'minicurso' ? 'fa-play' : 'fa-download'; ?>"></i> 
+                                            <?php echo $secao['tipo'] === 'minicurso' ? 'Assistir / Baixar' : 'Acessar Conteúdo'; ?>
+                                        </a>
+                                    </div>
                                 </div>
-                            <?php endif; ?>
-                            
-                            <div style="padding: 20px; flex: 1; display: flex; flex-direction: column;">
-                                <h3 class="card-title material-titulo" style="margin-top: 0; font-size: 1.1em; line-height: 1.4;"><?php echo $m['titulo']; ?></h3>
-                                <p class="material-categoria" style="color: var(--primary); font-weight: 600; font-size: 0.85em; margin-bottom: 15px;">
-                                    <?php echo $m['categoria']; ?>
-                                </p>
-                            <?php if($m['visibilidade'] === 'admin' && ($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN)): ?>
-                                <span class="badge badge-warning" style="margin-bottom: 15px;">
-                                    <i class="fa-solid fa-lock"></i> Restrito
-                                </span>
-                            <?php endif; ?>
-                                <a href="<?php echo $m['caminho']; ?>" download class="btn btn-primary btn-block" style="margin-top: auto;">
-                                    <i class="fa-solid fa-download"></i> Baixar Material
-                                </a>
                             </div>
-                        </div>
-                    <?php endforeach; else: ?>
-                        <div class="card">
-                            <p style="text-align: center; color: var(--text-muted);">
-                                <i class="fa-solid fa-folder-open" style="font-size: 3em; margin-bottom: 15px; display: block; opacity: 0.3;"></i>
-                                Nenhum material disponível no momento.
-                            </p>
-                        </div>
-                    <?php endif; ?>
-                </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endforeach; ?>
+
+                <?php if(count($materiais) === 0): ?>
+                    <div class="card" style="margin-top: 40px; padding: 60px; text-align: center;">
+                        <i class="fa-solid fa-folder-open" style="font-size: 4em; color: var(--text-muted); opacity: 0.2; margin-bottom: 20px;"></i>
+                        <h2 style="color: var(--text-muted);">Nenhum material encontrado</h2>
+                        <p style="color: var(--text-muted);">Fique atento às atualizações do grupo!</p>
+                    </div>
+                <?php endif; ?>
 
 <?php 
 // ### PÁGINA: GESTÃO DE MATERIAIS (ADMIN/SUPERADMIN) ###
@@ -2855,26 +2911,35 @@ elseif ($pagina === 'materiais'):
                             <?php if(!empty($m['capa'])): ?>
                                 <img src="<?php echo htmlspecialchars($m['capa']); ?>" alt="Capa" style="width: 100%; height: 160px; object-fit: cover; border-bottom: 1px solid var(--border);">
                             <?php else: ?>
-                                <div style="width: 100%; height: 160px; background: rgba(239, 68, 68, 0.05); display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 3em; border-bottom: 1px solid var(--border);">
-                                    <i class="fa-solid fa-file-pdf"></i>
+                                <div style="width: 100%; height: 160px; background: rgba(0,0,0,0.02); display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 3em; border-bottom: 1px solid var(--border);">
+                                    <i class="fa-solid <?php echo ($m['tipo']??'') === 'minicurso' ? 'fa-video' : (($m['tipo']??'') === 'ebook' ? 'fa-book-open' : 'fa-file-lines'); ?>"></i>
                                 </div>
                             <?php endif; ?>
                             
                             <div style="padding: 20px; flex: 1; display: flex; flex-direction: column;">
-                                <h3 class="card-title material-titulo" style="margin-top: 0; font-size: 1.1em; line-height: 1.4;"><?php echo $m['titulo']; ?></h3>
-                                <p class="material-categoria" style="color: var(--primary); font-weight: 600; font-size: 0.85em; margin-bottom: 10px;">
-                                    <?php echo $m['categoria']; ?>
-                                </p>
-                                <div style="margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                    <span class="badge" style="background: rgba(0,0,0,0.05); color: var(--text-muted); text-transform: uppercase; font-size: 0.7em;">
+                                        <?php echo $m['tipo'] ?? 'material'; ?>
+                                    </span>
                                     <?php if($m['visibilidade'] === 'admin'): ?>
                                         <span class="badge badge-warning"><i class="fa-solid fa-lock"></i> Restrito</span>
                                     <?php else: ?>
                                         <span class="badge badge-success"><i class="fa-solid fa-users"></i> Público</span>
                                     <?php endif; ?>
-                                    <span style="font-size: 0.85em; color: var(--text-muted);"><i class="fa-solid fa-user"></i> <?php echo $m['criado_por'] ?? 'Sistema'; ?></span>
                                 </div>
-                                
-                                <div style="margin-top: auto; display: flex; gap: 8px; justify-content: space-between;">
+
+                                <h3 class="card-title material-titulo" style="margin-top: 0; font-size: 1.1em; line-height: 1.4;"><?php echo $m['titulo']; ?></h3>
+                                <p class="material-categoria" style="color: var(--primary); font-weight: 600; font-size: 0.85em; margin-bottom: 10px;">
+                                    <?php echo $m['categoria']; ?>
+                                </p>
+
+                                <?php if(!empty($m['descricao'])): ?>
+                                    <p style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 15px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                        <?php echo htmlspecialchars($m['descricao']); ?>
+                                    </p>
+                                <?php endif; ?>
+
+                                <div style="margin-top: auto; display: flex; gap: 8px; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 15px;">
                                     <a href="<?php echo $m['caminho']; ?>" download class="btn btn-outline btn-sm" style="flex: 1; text-align: center; max-height: 38px; display: flex; align-items: center; justify-content: center;">
                                         <i class="fa-solid fa-download"></i> <span style="margin-left:5px;">Baixar</span>
                                     </a>
@@ -2884,6 +2949,9 @@ elseif ($pagina === 'materiais'):
                                     <button onclick="confirmarDelete('material', <?php echo $m['id']; ?>, '<?php echo addslashes($m['titulo']); ?>')" class="btn btn-danger btn-icon btn-sm" title="Excluir">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
+                                </div>
+                                <div style="margin-top: 10px; font-size: 0.75em; color: var(--text-muted); opacity: 0.7;">
+                                    <i class="fa-solid fa-user"></i> <?php echo $m['criado_por'] ?? 'Sistema'; ?>
                                 </div>
                             </div>
                         </div>
@@ -2910,80 +2978,104 @@ elseif ($pagina === 'materiais'):
                             <form method="POST" enctype="multipart/form-data">
                                 <input type="hidden" name="acao" value="add_material">
                                 <div class="input-group">
-                                    <label>Título do Material *</label>
-                                    <input type="text" name="titulo" class="input-control" required 
-                                           placeholder="Ex: Guia de Transtornos de Ansiedade">
-                                </div>
-                                <div class="input-group">
-                                    <label>Categoria *</label>
-                                    <input type="text" name="categoria" class="input-control" required 
-                                           placeholder="Ex: Psicologia Clínica">
-                                </div>
-                                <div class="input-group">
-                                    <label>Visibilidade *</label>
-                                    <select name="visibilidade" class="input-control">
-                                        <option value="todos">🌐 Público (Todos os Membros)</option>
-                                        <option value="admin">🔒 Restrito (Apenas Administradores)</option>
-                                    </select>
-                                </div>
-                                <div class="input-group">
-                                    <label>Arquivo do Documento (PDF, Word, Excel, etc.) *</label>
-                                    <div class="file-upload-wrapper">
-                                        <label class="file-upload-box">
-                                            <input type="file" name="arquivo" required onchange="this.parentElement.querySelector('.file-name').innerText = this.files[0].name">
-                                            <i class="fa-solid fa-file-arrow-up"></i>
-                                            <span class="file-name">Clique para escolher o arquivo</span>
-                                            <span class="file-hint">Formatos suportados: PDF, DOCX, XLSX...</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Imagem de Capa (Opcional)</label>
-                                    <div class="file-upload-wrapper">
-                                        <label class="file-upload-box" style="padding: 16px;">
-                                            <input type="file" name="capa" accept="image/*" onchange="this.parentElement.querySelector('.file-name').innerText = this.files[0].name">
-                                            <i class="fa-solid fa-image"></i>
-                                            <span class="file-name">Escolher imagem de capa</span>
-                                            <span class="file-hint">Recomendado: imagem paisagem (JPG/PNG)</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <button type="submit" class="btn btn-primary btn-block">
-                                    <i class="fa-solid fa-check"></i> Salvar Material
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+                                     <label>Título do Material *</label>
+                                     <input type="text" name="titulo" class="input-control" required 
+                                            placeholder="Ex: Guia de Transtornos de Ansiedade">
+                                 </div>
+                                 <div class="input-group">
+                                     <label>Tipo de Conteúdo *</label>
+                                     <select name="tipo" class="input-control" required>
+                                         <option value="material">📄 Material de Apoio (PDF, Docs)</option>
+                                         <option value="ebook">📚 E-book / Guia Premium</option>
+                                         <option value="minicurso">🎬 Mini Curso / Masterclass</option>
+                                     </select>
+                                 </div>
+                                 <div class="input-group">
+                                     <label>Categoria *</label>
+                                     <input type="text" name="categoria" class="input-control" required 
+                                            placeholder="Ex: Psicologia Clínica">
+                                 </div>
+                                 <div class="input-group">
+                                     <label>Descrição Curta / O que será aprendido</label>
+                                     <textarea name="descricao" class="input-control" rows="3" placeholder="Uma breve descrição sobre este conteúdo..."></textarea>
+                                 </div>
+                                 <div class="input-group">
+                                     <label>Visibilidade *</label>
+                                     <select name="visibilidade" class="input-control">
+                                         <option value="todos">🌐 Público (Todos os Membros)</option>
+                                         <option value="admin">🔒 Restrito (Apenas Administradores)</option>
+                                     </select>
+                                 </div>
+                                 <div class="input-group">
+                                     <label>Arquivo do Documento (PDF, Word, Excel, etc.) *</label>
+                                     <div class="file-upload-wrapper">
+                                         <label class="file-upload-box">
+                                             <input type="file" name="arquivo" required onchange="this.parentElement.querySelector('.file-name').innerText = this.files[0].name">
+                                             <i class="fa-solid fa-file-arrow-up"></i>
+                                             <span class="file-name">Clique para escolher o arquivo</span>
+                                             <span class="file-hint">Formatos suportados: PDF, DOCX, XLSX...</span>
+                                         </label>
+                                     </div>
+                                 </div>
+                                 <div class="input-group">
+                                     <label>Imagem de Capa (Opcional)</label>
+                                     <div class="file-upload-wrapper">
+                                         <label class="file-upload-box" style="padding: 16px;">
+                                             <input type="file" name="capa" accept="image/*" onchange="this.parentElement.querySelector('.file-name').innerText = this.files[0].name">
+                                             <i class="fa-solid fa-image"></i>
+                                             <span class="file-name">Escolher imagem de capa</span>
+                                             <span class="file-hint">Recomendado: imagem paisagem (JPG/PNG)</span>
+                                         </label>
+                                     </div>
+                                 </div>
+                                 <button type="submit" class="btn btn-primary btn-block">
+                                     <i class="fa-solid fa-check"></i> Salvar Material
+                                 </button>
+                             </form>
+                         </div>
+                     </div>
+                 </div>
 
-                <!-- Modal: Editar Material -->
-                <div class="modal-overlay" id="modalEditMaterial">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h2><i class="fa-solid fa-pen"></i> Editar Material</h2>
-                            <button class="close-modal" onclick="closeModal('modalEditMaterial')">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <form method="POST" enctype="multipart/form-data">
-                                <input type="hidden" name="acao" value="edit_material">
-                                <input type="hidden" name="id_material" id="edit_mat_id">
-                                <div class="input-group">
-                                    <label>Título do Material *</label>
-                                    <input type="text" name="titulo" id="edit_mat_titulo" class="input-control" required>
-                                </div>
-                                <div class="input-group">
-                                    <label>Categoria *</label>
-                                    <input type="text" name="categoria" id="edit_mat_categoria" class="input-control" required>
-                                </div>
-                                <div class="input-group">
-                                    <label>Visibilidade *</label>
-                                    <select name="visibilidade" id="edit_mat_visibilidade" class="input-control">
-                                        <option value="todos">🌐 Público (Todos os Membros)</option>
-                                        <option value="admin">🔒 Restrito (Apenas Administradores)</option>
-                                    </select>
-                                </div>
+                 <!-- Modal: Editar Material -->
+                 <div class="modal-overlay" id="modalEditMaterial">
+                     <div class="modal-content">
+                         <div class="modal-header">
+                             <h2><i class="fa-solid fa-pen"></i> Editar Material</h2>
+                             <button class="close-modal" onclick="closeModal('modalEditMaterial')">
+                                 <i class="fa-solid fa-xmark"></i>
+                             </button>
+                         </div>
+                         <div class="modal-body">
+                             <form method="POST" enctype="multipart/form-data">
+                                 <input type="hidden" name="acao" value="edit_material">
+                                 <input type="hidden" name="id_material" id="edit_mat_id">
+                                 <div class="input-group">
+                                     <label>Título do Material *</label>
+                                     <input type="text" name="titulo" id="edit_mat_titulo" class="input-control" required>
+                                 </div>
+                                 <div class="input-group">
+                                     <label>Tipo de Conteúdo *</label>
+                                     <select name="tipo" id="edit_mat_tipo" class="input-control" required>
+                                         <option value="material">📄 Material de Apoio (PDF, Docs)</option>
+                                         <option value="ebook">📚 E-book / Guia Premium</option>
+                                         <option value="minicurso">🎬 Mini Curso / Masterclass</option>
+                                     </select>
+                                 </div>
+                                 <div class="input-group">
+                                     <label>Categoria *</label>
+                                     <input type="text" name="categoria" id="edit_mat_categoria" class="input-control" required>
+                                 </div>
+                                 <div class="input-group">
+                                     <label>Descrição Curta / O que será aprendido</label>
+                                     <textarea name="descricao" id="edit_mat_descricao" class="input-control" rows="3"></textarea>
+                                 </div>
+                                 <div class="input-group">
+                                     <label>Visibilidade *</label>
+                                     <select name="visibilidade" id="edit_mat_visibilidade" class="input-control">
+                                         <option value="todos">🌐 Público (Todos os Membros)</option>
+                                         <option value="admin">🔒 Restrito (Apenas Administradores)</option>
+                                     </select>
+                                 </div>
                                 <div class="input-group">
                                     <label>Nova Imagem de Capa (Opcional - Substitui a atual)</label>
                                     <div class="file-upload-wrapper">
@@ -4224,9 +4316,11 @@ else: ?>
             document.getElementById('edit_mat_id').value = dados.id; 
             document.getElementById('edit_mat_titulo').value = dados.titulo; 
             document.getElementById('edit_mat_categoria').value = dados.categoria; 
+            document.getElementById('edit_mat_tipo').value = dados.tipo || 'material'; 
+            document.getElementById('edit_mat_descricao').value = dados.descricao || ''; 
             document.getElementById('edit_mat_visibilidade').value = dados.visibilidade; 
             document.querySelectorAll('#modalEditMaterial .file-name').forEach(el => {
-                el.innerText = 'Escolher nova imagem de capa';
+                el.innerText = 'Consultar material ou Escolher nova capa';
             });
             openModal('modalEditMaterial');
         }
