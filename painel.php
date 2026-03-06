@@ -708,16 +708,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $config_template = $pdo->query("SELECT valor FROM configuracoes WHERE chave = 'whatsapp_mensagem_template'")->fetchColumn();
                 
                 // Substitui variáveis no template
-                $link_login = 'http://localhost/karen_site/Site/melodias/login.php';
+                $link_login = 'https://melodias.karengomes.com.br/login'; // Usando URL de produção
                 $mensagem_whats = str_replace(
                     ['{NOME}', '{LINK}', '{EMAIL}', '{SENHA}'],
-                    [$nome, $link_login, $email, $whatsapp],
-                    $config_template ?: "Olá {$nome}! Seu acesso foi aprovado.\n\nLink: {$link_login}\nEmail: {$email}\nSenha: {$whatsapp}"
+                    [$nome, $link_login, $email, 'melodias123'],
+                    $config_template ?: "Olá {$nome}! Bem-vindo ao Melodias. 🎵 Seu acesso foi aprovado!\n\nAcesse: {$link_login}\nE-mail: {$email}\nSenha: melodias123"
                 );
                 
                 // Remove +55 e formatação do WhatsApp (API precisa só números com DDI)
                 $whats_numero = preg_replace('/[^0-9]/', '', $whatsapp);
-                if (substr($whats_numero, 0, 2) !== '55') {
+                if (strlen($whats_numero) > 0 && substr($whats_numero, 0, 2) !== '55') {
                     $whats_numero = '55' . $whats_numero; // Adiciona DDI Brasil
                 }
                 
@@ -737,9 +737,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                   "━━━━━━━━━━━━━━━━━━━━━━━<br>" .
                                   "🔗 Link: <a href='{$link_login}' target='_blank'>{$link_login}</a><br>" .
                                   "📧 Login: {$email}<br>" .
-                                  "🔑 Senha: {$whatsapp}<br>" .
+                                  "🔑 Senha: melodias123<br>" .
                                   "━━━━━━━━━━━━━━━━━━━━━━━<br><br>" .
-                                  "💬 Envie via WhatsApp ou outro meio.";
+                                  "💬 <a href='{$whatsapp_url}' target='_blank' class='btn btn-success btn-sm' style='display:inline-block; margin-top:10px;'><i class='fab fa-whatsapp'></i> Enviar via WhatsApp</a>";
                     
                     $notificacao = "showToast('Aprovado', '✅ Acesso liberado!', 'success'); " .
                                  "setTimeout(() => { 
@@ -1536,7 +1536,7 @@ $banco_desatualizado = false;
                     <i class="fa-solid fa-gauge-high"></i> Dashboard
                 </a>
                 <a href="?page=biblioteca" class="nav-link <?php if($pagina=='biblioteca') echo 'active';?>">
-                    <i class="fa-solid fa-book-bookmark"></i> Biblioteca
+                    <i class="fa-solid fa-graduation-cap"></i> Aprendizados
                 </a>
                 <a href="?page=forum" class="nav-link <?php if($pagina=='forum') echo 'active';?>">
                     <i class="fa-solid fa-comments"></i> Fórum
@@ -1665,8 +1665,8 @@ $banco_desatualizado = false;
                                 Trocar Senha
                             </a>
                             <a href="?page=biblioteca" class="dropdown-item">
-                                <i class="fa-solid fa-book"></i>
-                                Biblioteca
+                                <i class="fa-solid fa-graduation-cap"></i>
+                                Aprendizados
                             </a>
                             <a href="?page=forum" class="dropdown-item">
                                 <i class="fa-solid fa-comments"></i>
@@ -1678,9 +1678,17 @@ $banco_desatualizado = false;
                                     <i class="fa-solid fa-folder"></i>
                                     Gerenciar Materiais
                                 </a>
+                                <a href="?page=solicitacoes" class="dropdown-item">
+                                    <i class="fa-solid fa-user-clock"></i>
+                                    Solicitações
+                                </a>
                                 <a href="?page=sugestoes" class="dropdown-item">
                                     <i class="fa-solid fa-lightbulb"></i>
                                     Sugestões
+                                </a>
+                                <a href="?page=configuracoes" class="dropdown-item">
+                                    <i class="fa-solid fa-gear"></i>
+                                    Configurações
                                 </a>
                             <?php endif; ?>
                             <?php if ($role === ROLE_SUPERADMIN): ?>
@@ -2789,7 +2797,7 @@ elseif ($pagina === 'biblioteca'):
 ?>
                 <div class="page-header-actions">
                     <div>
-                        <h1><i class="fa-solid fa-graduation-cap"></i> Área do Conhecimento</h1>
+                        <h1><i class="fa-solid fa-graduation-cap"></i> Aprendizados & Conhecimento</h1>
                         <p style="color: var(--text-muted);">E-books, Mini Cursos e Materiais Exclusivos</p>
                     </div>
                     <div class="input-group" style="margin: 0; min-width: 300px;">
@@ -3306,7 +3314,7 @@ elseif ($pagina === 'configuracoes'):
                         <?php 
                         $preview = str_replace(
                             ['{NOME}', '{LINK}', '{EMAIL}', '{SENHA}'],
-                            ['<strong>João Silva</strong>', '<strong>http://localhost/.../login.php</strong>', '<strong>joao@email.com</strong>', '<strong>(15) 99999-9999</strong>'],
+                            ['<strong>João Silva</strong>', '<strong>https://melodias.karengomes.com.br/login</strong>', '<strong>joao@email.com</strong>', '<strong>melodias123</strong>'],
                             htmlspecialchars($config_template)
                         );
                         echo $preview;
@@ -3332,9 +3340,9 @@ elseif ($pagina === 'configuracoes'):
         document.querySelector('textarea[name="whatsapp_mensagem_template"]').addEventListener('input', function(e) {
             let texto = e.target.value;
             texto = texto.replace(/\{NOME\}/g, '<strong>João Silva</strong>');
-            texto = texto.replace(/\{LINK\}/g, '<strong>http://localhost/.../login.php</strong>');
+            texto = texto.replace(/\{LINK\}/g, '<strong>https://melodias.karengomes.com.br/login</strong>');
             texto = texto.replace(/\{EMAIL\}/g, '<strong>joao@email.com</strong>');
-            texto = texto.replace(/\{SENHA\}/g, '<strong>(15) 99999-9999</strong>');
+            texto = texto.replace(/\{SENHA\}/g, '<strong>melodias123</strong>');
             document.getElementById('preview-mensagem').innerHTML = texto;
         });
 
