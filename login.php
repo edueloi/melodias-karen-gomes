@@ -173,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             backdrop-filter: blur(10px);
             border-radius: 24px;
             box-shadow: var(--shadow);
-            padding: 50px 40px;
+            padding: 40px 36px;
             text-align: center;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             animation: slideUp 0.6s ease;
@@ -327,16 +327,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: var(--bg-gradient);
             color: white;
             border: none;
-            padding: 16px 32px;
+            padding: 15px 24px;
             border-radius: 12px;
-            font-size: 1.05em;
+            font-size: 1em;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             margin-top: 10px;
-            box-shadow: 0 10px 25px rgba(110, 43, 58, 0.3);
+            box-shadow: 0 8px 20px rgba(110, 43, 58, 0.3);
             position: relative;
             overflow: hidden;
+            width: 100%;
         }
 
         .btn-entrar::before {
@@ -381,15 +382,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .link-item {
             color: var(--primary);
             text-decoration: none;
-            font-size: 0.95em;
+            font-size: 0.9em;
             font-weight: 500;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
             transition: all 0.3s ease;
             padding: 8px;
             border-radius: 8px;
+            white-space: nowrap;
         }
 
         .link-item:hover {
@@ -403,19 +405,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         /* Responsive */
         @media (max-width: 576px) {
-            .login-container {
-                padding: 40px 30px;
-            }
-
-            .login-container h2 {
-                font-size: 1.6em;
-            }
-
-            .logo {
-                width: 70px;
-                height: 70px;
-                font-size: 2em;
-            }
+            body { padding: 12px; }
+            .login-container { padding: 30px 22px; border-radius: 18px; }
+            .login-container h2 { font-size: 1.5em; }
+            .logo { width: 60px; height: 60px; font-size: 1.8em; }
+            .btn-entrar { padding: 14px 24px; font-size: 0.95em; }
+        }
+        @media (max-width: 360px) {
+            .login-container { padding: 24px 16px; }
+            .input-group input { padding: 12px 14px; font-size: 0.92em; }
         }
 
         /* Loading Overlay Premium */
@@ -604,10 +602,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Ativa o preloader full-screen imediatamente
             preloader.classList.add('active');
             
-            // Aguarda 3 segundos (3000ms) para que a animação seja vista, depois envia
+            // Aguarda 800ms para exibir animação, depois envia
             setTimeout(() => {
                 form.submit();
-            }, 3000);
+            }, 800);
         });
 
         // Auto-focus no email

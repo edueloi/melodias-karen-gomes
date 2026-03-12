@@ -8,121 +8,112 @@ require_once 'email_config.php';
 
 // ==========================================
 // AUTO-SETUP: Garante estrutura do banco
+// (Apenas no ambiente local/SQLite.
+//  Em produção as tabelas são criadas via migrate_mysql.sql)
 // ==========================================
 try {
     $pdo = getDB();
-    
-    // Cria tabela materiais se não existir
-    $pdo->exec("CREATE TABLE IF NOT EXISTS materiais (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        titulo TEXT NOT NULL,
-        descricao TEXT,
-        categoria TEXT NOT NULL,
-        tipo TEXT DEFAULT 'arquivo',
-        caminho TEXT,
-        capa TEXT,
-        visibilidade TEXT DEFAULT 'todos',
-        created_by INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )");
-    
-    // Cria tabela sugestoes se não existir
-    $pdo->exec("CREATE TABLE IF NOT EXISTS sugestoes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        texto TEXT NOT NULL,
-        status TEXT DEFAULT 'nova',
-        resposta_admin TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )");
-    
-    // Cria tabela forum_posts se não existir
-    $pdo->exec("CREATE TABLE IF NOT EXISTS forum_posts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        titulo TEXT NOT NULL,
-        conteudo TEXT NOT NULL,
-        categoria TEXT DEFAULT 'geral',
-        views INTEGER DEFAULT 0,
-        status TEXT DEFAULT 'ativo',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES profissionais(id)
-    )");
-    
-    // Cria tabela forum_comentarios se não existir
-    $pdo->exec("CREATE TABLE IF NOT EXISTS forum_comentarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        post_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        comentario TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (post_id) REFERENCES forum_posts(id),
-        FOREIGN KEY (user_id) REFERENCES profissionais(id)
-    )");
-    
-    // Cria tabela forum_curtidas se não existir
-    $pdo->exec("CREATE TABLE IF NOT EXISTS forum_curtidas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        post_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(post_id, user_id),
-        FOREIGN KEY (post_id) REFERENCES forum_posts(id),
-        FOREIGN KEY (user_id) REFERENCES profissionais(id)
-    )");
-    
-    // Adiciona colunas se não existirem (para bancos antigos)
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN role TEXT DEFAULT 'user'"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN status TEXT DEFAULT 'ativo'"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN senha TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN foto TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN bio TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN registro_tipo TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN registro_numero TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN area_atuacao TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN formacao_superior TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN formacao_pos TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN instagram TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN website TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN genero TEXT DEFAULT 'Não declarado'"); } catch(Exception $e){}
-    
-    // Altera materiais para incluir novos campos
-    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN descricao TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN tipo TEXT DEFAULT 'material'"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN autor TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN url_externa TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN capa TEXT"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN created_by INTEGER"); } catch(Exception $e){}
 
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE profissionais ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e){}
-    try { $pdo->exec("ALTER TABLE materiais ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e){}
-    
-    // Cria tabela de configurações do sistema
-    $pdo->exec("CREATE TABLE IF NOT EXISTS configuracoes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        chave TEXT UNIQUE NOT NULL,
-        valor TEXT,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )");
-    
-    // Insere configurações padrão se não existirem
+    if (dbDriver() === 'sqlite') {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS materiais (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL, descricao TEXT, categoria TEXT NOT NULL,
+            tipo TEXT DEFAULT 'arquivo', caminho TEXT, capa TEXT,
+            visibilidade TEXT DEFAULT 'todos', created_by INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS sugestoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL, texto TEXT NOT NULL,
+            status TEXT DEFAULT 'nova', resposta_admin TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS forum_posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL, titulo TEXT NOT NULL, conteudo TEXT NOT NULL,
+            categoria TEXT DEFAULT 'geral', views INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'ativo',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS forum_comentarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL, user_id INTEGER NOT NULL, comentario TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS forum_curtidas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(post_id, user_id)
+        )");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS eventos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL, descricao TEXT, data_evento DATETIME,
+            local TEXT, mapa_link TEXT, created_by INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS eventos_presenca (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            evento_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
+            status TEXT DEFAULT 'confirmado',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(evento_id, user_id)
+        )");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS configuracoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chave TEXT UNIQUE NOT NULL, valor TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        // Colunas adicionadas em versões posteriores
+        $alter = [
+            "ALTER TABLE profissionais ADD COLUMN role TEXT DEFAULT 'user'",
+            "ALTER TABLE profissionais ADD COLUMN status TEXT DEFAULT 'ativo'",
+            "ALTER TABLE profissionais ADD COLUMN senha TEXT",
+            "ALTER TABLE profissionais ADD COLUMN foto TEXT",
+            "ALTER TABLE profissionais ADD COLUMN bio TEXT",
+            "ALTER TABLE profissionais ADD COLUMN registro_tipo TEXT",
+            "ALTER TABLE profissionais ADD COLUMN registro_numero TEXT",
+            "ALTER TABLE profissionais ADD COLUMN area_atuacao TEXT",
+            "ALTER TABLE profissionais ADD COLUMN formacao_superior TEXT",
+            "ALTER TABLE profissionais ADD COLUMN formacao_pos TEXT",
+            "ALTER TABLE profissionais ADD COLUMN instagram TEXT",
+            "ALTER TABLE profissionais ADD COLUMN website TEXT",
+            "ALTER TABLE profissionais ADD COLUMN genero TEXT DEFAULT 'Não declarado'",
+            "ALTER TABLE profissionais ADD COLUMN endereco TEXT",
+            "ALTER TABLE profissionais ADD COLUMN descricao_trabalho TEXT",
+            "ALTER TABLE profissionais ADD COLUMN aceita_parcerias TEXT DEFAULT 'Não'",
+            "ALTER TABLE profissionais ADD COLUMN preco_social TEXT DEFAULT 'Não'",
+            "ALTER TABLE profissionais ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+            "ALTER TABLE profissionais ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+            "ALTER TABLE materiais ADD COLUMN descricao TEXT",
+            "ALTER TABLE materiais ADD COLUMN tipo TEXT DEFAULT 'material'",
+            "ALTER TABLE materiais ADD COLUMN autor TEXT",
+            "ALTER TABLE materiais ADD COLUMN url_externa TEXT",
+            "ALTER TABLE materiais ADD COLUMN capa TEXT",
+            "ALTER TABLE materiais ADD COLUMN created_by INTEGER",
+            "ALTER TABLE materiais ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+            "ALTER TABLE materiais ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+        ];
+        foreach ($alter as $sql) { try { $pdo->exec($sql); } catch(Exception $e){} }
+    }
+
+    // Configurações padrão (compatível SQLite e MySQL)
     $configs_padrao = [
         ['whatsapp_auto_abrir', '1'],
         ['whatsapp_mensagem_template', "🎉 *Bem-vindo(a) ao Melodias!*\n\nOlá {NOME}, sua solicitação foi *aprovada*!\n\n📋 *Seus dados de acesso:*\n\n🔗 *Link:*\n{LINK}\n\n📧 *Email/Login:*\n{EMAIL}\n\n🔑 *Senha Temporária:*\n{SENHA}\n\n⚠️ _Recomendamos trocar sua senha após o primeiro acesso._\n\n✨ Agora você faz parte da nossa rede de profissionais em saúde mental!"]
     ];
-    
+    $insert_ignore = dbDriver() === 'mysql'
+        ? "INSERT IGNORE INTO configuracoes (chave, valor) VALUES (?, ?)"
+        : "INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES (?, ?)";
     foreach ($configs_padrao as $config) {
-        try {
-            $stmt = $pdo->prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES (?, ?)");
-            $stmt->execute($config);
-        } catch(Exception $e){}
+        try { $pdo->prepare($insert_ignore)->execute($config); } catch(Exception $e){}
     }
-    
+
 } catch(Exception $e) {
     // Ignora erros de estrutura
 }
@@ -144,6 +135,8 @@ $id_usuario = $user['id'];
 $role = $user['role'] ?? 'user'; // Define 'user' como padrão se não existir
 $primeiro_nome = explode(' ', trim($user['nome']))[0];
 $notificacao = '';
+$stats_sugestoes = 0;
+$stats_users = 0;
 
 // Atualiza role na sessão se não estiver definida
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== $role) {
@@ -163,6 +156,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("INSERT INTO sugestoes (user_id, texto) VALUES (?, ?)");
             $stmt->execute([$id_usuario, $texto]);
             $notificacao = "showToast('Sucesso', 'Sua ideia foi enviada!', 'success');";
+        }
+    }
+    
+    // --- EVENTOS / PRESENÇA ---
+    if ($acao === 'confirmar_presenca') {
+        $evento_id = $_POST['evento_id'];
+        $status = $_POST['status_presenca'] ?? 'confirmado'; // 'confirmado' ou 'recusado'
+        
+        $stmt = $pdo->prepare("SELECT id FROM eventos_presenca WHERE evento_id = ? AND user_id = ?");
+        $stmt->execute([$evento_id, $id_usuario]);
+        
+        if ($stmt->fetch()) {
+            if($status === 'remover') {
+                $pdo->prepare("DELETE FROM eventos_presenca WHERE evento_id = ? AND user_id = ?")->execute([$evento_id, $id_usuario]);
+                $notificacao = "showToast('Cancelado', 'Sua presença foi cancelada', 'info');";
+            } else {
+                $pdo->prepare("UPDATE eventos_presenca SET status = ? WHERE evento_id = ? AND user_id = ?")->execute([$status, $evento_id, $id_usuario]);
+                $msg = $status === 'confirmado' ? 'Presença confirmada!' : 'Você marcou que não irá.';
+                $notificacao = "showToast('Atualizado', '{$msg}', 'success');";
+            }
+        } else {
+            if($status !== 'remover') {
+                $pdo->prepare("INSERT INTO eventos_presenca (evento_id, user_id, status) VALUES (?, ?, ?)")->execute([$evento_id, $id_usuario, $status]);
+                $msg = $status === 'confirmado' ? 'Você confirmou sua presença!' : 'Você marcou que não irá.';
+                $notificacao = "showToast('Confirmado', '{$msg}', 'success');";
+            }
         }
     }
     
@@ -224,6 +243,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $website = sanitize($_POST['website']);
             $bio = trim($_POST['bio'] ?? '');
             
+            // Novos campos
+            $endereco = sanitize($_POST['endereco'] ?? '');
+            $descricao_trabalho = sanitize($_POST['descricao_trabalho'] ?? '');
+            $aceita_parcerias = sanitize($_POST['aceita_parcerias'] ?? 'Não');
+            $preco_social = sanitize($_POST['preco_social'] ?? 'Não');
+            
             // Formações (Pós)
             $pos = $_POST['formacao_pos'] ?? [];
             $pos = array_filter(array_map('sanitize', $pos));
@@ -234,12 +259,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     nome = ?, whatsapp = ?, genero = ?, especialidade = ?, registro_tipo = ?, 
                     registro_numero = ?, area_atuacao = ?, formacao_superior = ?, 
                     formacao_pos = ?, instagram = ?, website = ?, bio = ?,
+                    endereco = ?, descricao_trabalho = ?, aceita_parcerias = ?, preco_social = ?,
                     updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?");
                 $stmt->execute([
                     $nome, $whatsapp, $genero, $especialidade, $registro_tipo,
                     $registro_numero, $area_atuacao, $formacao_superior,
                     $formacao_pos_json, $instagram, $website, $bio,
+                    $endereco, $descricao_trabalho, $aceita_parcerias, $preco_social,
                     $id_usuario
                 ]);
             } catch (PDOException $e) {
@@ -247,12 +274,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("UPDATE profissionais SET 
                     nome = ?, whatsapp = ?, genero = ?, especialidade = ?, registro_tipo = ?, 
                     registro_numero = ?, area_atuacao = ?, formacao_superior = ?, 
-                    formacao_pos = ?, instagram = ?, website = ?, bio = ?
+                    formacao_pos = ?, instagram = ?, website = ?, bio = ?,
+                    endereco = ?, descricao_trabalho = ?, aceita_parcerias = ?, preco_social = ?
                     WHERE id = ?");
                 $stmt->execute([
                     $nome, $whatsapp, $genero, $especialidade, $registro_tipo,
                     $registro_numero, $area_atuacao, $formacao_superior,
                     $formacao_pos_json, $instagram, $website, $bio,
+                    $endereco, $descricao_trabalho, $aceita_parcerias, $preco_social,
                     $id_usuario
                 ]);
             }
@@ -357,6 +386,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $notificacao = "showToast('Excluído', 'O tópico foi apagado com sucesso.', 'success');";
         }
         
+        // --- EVENTOS ---
+        if ($acao === 'add_evento') {
+            $titulo = sanitize($_POST['titulo']);
+            $descricao = sanitize($_POST['descricao']);
+            $data_evento = $_POST['data_evento'];
+            $local = sanitize($_POST['local']);
+            $mapa_link = sanitize($_POST['mapa_link'] ?? '');
+            
+            $stmt = $pdo->prepare("INSERT INTO eventos (titulo, descricao, data_evento, local, mapa_link, created_by) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$titulo, $descricao, $data_evento, $local, $mapa_link, $id_usuario]);
+            $notificacao = "showToast('Sucesso', 'Evento criado com sucesso!', 'success');";
+        }
+
+        if ($acao === 'delete_evento') {
+            $id_evento = $_POST['id_evento'];
+            $pdo->prepare("DELETE FROM eventos_presenca WHERE evento_id = ?")->execute([$id_evento]);
+            $pdo->prepare("DELETE FROM eventos WHERE id = ?")->execute([$id_evento]);
+            $notificacao = "showToast('Excluído', 'Evento removido com sucesso!', 'error');";
+        }
     
         // --- MATERIAIS ---
         if ($acao === 'add_material') {
@@ -815,13 +863,14 @@ $banco_desatualizado = false;
            SISTEMA MELODIAS - DESIGN PREMIUM COMPLETO
         ======================================================== */
         :root {
-            --bg-body: #f8fafc; --bg-card: #ffffff; --bg-sidebar: #0f172a;
+            --bg-body: #f1f5f9; --bg-card: #ffffff; --bg-sidebar: #0d1b2a;
             --text-main: #1e293b; --text-muted: #64748b; --border: #e2e8f0;
             --primary: #6e2b3a; --primary-hover: #4a1d27; --accent: #1b333d;
             --success: #10b981; --warning: #f59e0b; --danger: #ef4444; --info: #3b82f6;
-            --shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 2px 6px rgba(0,0,0,0.04);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.05);
+            --radius: 10px; --radius-lg: 16px;
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         [data-theme="dark"] {
@@ -833,7 +882,8 @@ $banco_desatualizado = false;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-body); color: var(--text-main); transition: var(--transition); overflow-x: hidden; line-height: 1.6; }
+        html { overflow-x: hidden; } /* overflow-x NO html, não no body — evita quebrar position:fixed */
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-body); color: var(--text-main); transition: var(--transition); line-height: 1.6; }
 
         /* Animações */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -846,10 +896,11 @@ $banco_desatualizado = false;
         .app-container { display: flex; min-height: 100vh; }
         
         /* ========== SIDEBAR ========== */
-        .sidebar { 
-            width: 270px; background: var(--bg-sidebar); color: #fff; 
-            display: flex; flex-direction: column; position: fixed; 
-            height: 100vh; z-index: 100; transition: var(--transition); 
+        .sidebar {
+            width: 270px; background: var(--bg-sidebar); color: #fff;
+            display: flex; flex-direction: column; position: fixed;
+            top: 0; left: 0; height: 100vh; z-index: 100;
+            transition: var(--transition);
             overflow-y: auto; overflow-x: hidden;
             scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
         }
@@ -1012,8 +1063,10 @@ $banco_desatualizado = false;
             display: block; opacity: 1; transform: translateY(0) scale(1);
         }
         .dropdown-header { padding: 14px 18px; border-bottom: 1px solid var(--border); background: rgba(110,43,58,0.03); }
-        .dropdown-header strong { display: block; color: var(--text-main); margin-bottom: 2px; font-size: 0.9em; }
-        .dropdown-header small { color: var(--text-muted); font-size: 0.78em; }
+        .dropdown-header strong { display: block; color: var(--text-main); margin-bottom: 2px; font-size: 0.88em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+        .dropdown-header small { color: var(--text-muted); font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 200px; }
+        /* Overlay que fecha o dropdown ao clicar fora (mobile) */
+        .dropdown-backdrop { display: none; position: fixed; inset: 0; z-index: 899; }
         .dropdown-item {
             padding: 11px 18px; display: flex; align-items: center;
             gap: 10px; color: var(--text-main); text-decoration: none;
@@ -1030,7 +1083,15 @@ $banco_desatualizado = false;
             display: flex; align-items: center; justify-content: center;
         }
         .theme-btn:hover { border-color: var(--primary); transform: rotate(20deg); color: var(--primary); background: rgba(110,43,58,0.05); }
-        .mobile-toggle { display: none; }
+        .mobile-toggle { display: none; margin-right: 15px; }
+
+        @media (max-width: 1024px) {
+            .mobile-toggle { display: flex; }
+            .sidebar { transform: translateX(-100%); width: 280px; box-shadow: 20px 0 50px rgba(0,0,0,0.2); }
+            .sidebar.show { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+            .topbar { left: 0; width: 100%; }
+        }
         .mobile-toggle:hover { border-color: var(--primary); color: var(--primary); }
         
         /* Overlay Mobile */
@@ -1061,43 +1122,41 @@ $banco_desatualizado = false;
             background: var(--bg-card);
             border-top: 1px solid var(--border);
             z-index: 200;
-            padding: 6px 0 max(6px, env(safe-area-inset-bottom));
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            padding: 4px 0 max(4px, env(safe-area-inset-bottom));
+            box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
         }
         .bottom-nav-inner {
             display: flex; justify-content: space-around; align-items: center;
+            max-width: 480px; margin: 0 auto;
         }
         .bnav-item {
-            display: flex; flex-direction: column; align-items: center; gap: 3px;
-            padding: 6px 14px; border-radius: 12px;
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+            padding: 5px 8px; border-radius: 10px;
             text-decoration: none; color: var(--text-muted);
-            font-size: 0.62em; font-weight: 600; text-transform: uppercase;
-            letter-spacing: 0.3px; transition: var(--transition);
-            flex: 1; max-width: 80px;
+            font-size: 0.58em; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.2px; transition: var(--transition);
+            flex: 1; max-width: 72px; min-width: 0;
             position: relative;
         }
-        .bnav-item i { font-size: 1.4em; }
-        .bnav-item:hover, .bnav-item.active {
-            color: var(--primary);
-        }
-        .bnav-item.active i { 
-            transform: translateY(-2px);
-        }
+        .bnav-item i { font-size: 1.25em; }
+        .bnav-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .bnav-item:hover, .bnav-item.active { color: var(--primary); }
+        .bnav-item.active i { transform: translateY(-1px); }
         .bnav-item .bnav-dot {
-            position: absolute; top: 4px; right: calc(50% - 18px);
-            width: 6px; height: 6px; border-radius: 50%;
+            position: absolute; top: 3px; right: calc(50% - 16px);
+            width: 5px; height: 5px; border-radius: 50%;
             background: var(--danger); border: 1.5px solid var(--bg-card);
         }
         .bnav-fab {
-            width: 52px; height: 52px; border-radius: 50%;
+            width: 46px; height: 46px; border-radius: 50%;
             background: linear-gradient(135deg, var(--primary), #9d405a);
             color: white; display: flex; align-items: center; justify-content: center;
-            font-size: 1.4em; border: none; cursor: pointer;
-            box-shadow: 0 4px 16px rgba(110,43,58,0.4);
-            transition: var(--transition); margin-top: -8px; flex-shrink: 0;
+            font-size: 1.2em; border: none; cursor: pointer;
+            box-shadow: 0 4px 14px rgba(110,43,58,0.4);
+            transition: var(--transition); margin-top: -6px; flex-shrink: 0;
             text-decoration: none;
         }
-        .bnav-fab:hover { transform: scale(1.08) rotate(10deg); }
+        .bnav-fab:hover { transform: scale(1.08); }
         .page-header { margin-bottom: 30px; }
         .page-header h1 { 
             font-size: 2em; font-weight: 800; color: var(--text-main); 
@@ -1131,10 +1190,10 @@ $banco_desatualizado = false;
         .card-text { color: var(--text-muted); font-size: 0.9em; line-height: 1.6; margin-bottom: 15px; }
         
         /* ========== TABELA PREMIUM ========== */
-        .table-container { 
-            background: var(--bg-card); border-radius: 12px; 
-            box-shadow: var(--shadow); border: 1px solid var(--border); 
-            overflow: hidden;
+        .table-container {
+            background: var(--bg-card); border-radius: 12px;
+            box-shadow: var(--shadow); border: 1px solid var(--border);
+            overflow-x: auto; overflow-y: visible;
         }
         table { width: 100%; border-collapse: collapse; }
         thead th { 
@@ -1171,7 +1230,8 @@ $banco_desatualizado = false;
         }
         .btn-outline:hover { border-color: var(--primary); color: var(--primary); background: rgba(110, 43, 58, 0.05); }
         .btn-icon { padding: 8px 12px; }
-        .btn-sm { padding: 6px 12px; font-size: 0.8em; }
+        .btn-sm { padding: 6px 12px; font-size: 0.78em; }
+        .btn-lg { padding: 11px 22px; font-size: 0.92em; }
         .btn-block { width: 100%; justify-content: center; }
         
         .input-group { margin-bottom: 18px; }
@@ -1203,38 +1263,42 @@ $banco_desatualizado = false;
         .badge-purple { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
 
         /* ========== MODAIS AVANÇADOS ========== */
-        .modal-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); 
-            z-index: 999; display: none; justify-content: center; 
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
+            z-index: 999; display: none; justify-content: center;
             align-items: center; animation: fadeIn 0.3s;
+            padding: 16px;
         }
         .modal-overlay.active { display: flex; }
-        .modal-content { 
-            background: var(--bg-card); width: 95%; max-width: 600px; 
-            border-radius: 16px; padding: 0; box-shadow: 0 20px 60px rgba(0,0,0,0.3); 
-            animation: scaleIn 0.3s; position: relative; max-height: 90vh; 
+        .modal-content {
+            background: var(--bg-card); width: 100%; max-width: 600px;
+            border-radius: 16px; padding: 0; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: scaleIn 0.3s; position: relative;
+            max-height: calc(100vh - 32px);
             overflow: hidden; display: flex; flex-direction: column;
         }
-        .modal-header { 
-            display: flex; justify-content: space-between; 
-            align-items: center; padding: 25px 30px; 
-            border-bottom: 2px solid var(--border);
+        .modal-header {
+            display: flex; justify-content: space-between;
+            align-items: center; padding: 20px 24px;
+            border-bottom: 1px solid var(--border); flex-shrink: 0;
         }
-        .modal-header h2 { 
-            font-size: 1.5em; font-weight: 800; color: var(--text-main); 
+        .modal-header h2 {
+            font-size: 1.15em; font-weight: 700; color: var(--text-main);
         }
-        .close-modal { 
-            background: none; border: none; font-size: 1.5em; 
+        .close-modal {
+            background: none; border: none; font-size: 1.3em;
             color: var(--text-muted); cursor: pointer; transition: var(--transition);
-            width: 35px; height: 35px; border-radius: 50%; 
+            width: 34px; height: 34px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
         }
         .close-modal:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
-        .modal-body { padding: 30px; overflow-y: auto; flex-grow: 1; }
-        .modal-footer { 
-            padding: 20px 30px; border-top: 2px solid var(--border); 
-            display: flex; gap: 10px; justify-content: flex-end;
+        .modal-body { padding: 24px; overflow-y: auto; flex-grow: 1; -webkit-overflow-scrolling: touch; }
+        .modal-footer {
+            padding: 16px 24px; border-top: 1px solid var(--border);
+            display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0;
+            flex-wrap: wrap;
         }
 
         /* ========== TOASTS ========== */
@@ -1432,95 +1496,124 @@ $banco_desatualizado = false;
             .topbar { padding: 10px 20px; }
         }
 
+        /* ========== RESPONSIVO TABLET (1024px) ========== */
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); width: 280px; }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+
+            /* Page Header */
+            .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .page-header h1 { font-size: 1.5em; }
+            .page-header-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+            .page-header-actions .btn { flex: 1; min-width: 140px; justify-content: center; font-size: 0.85em; }
+
+            /* Grid */
+            .dash-row { grid-template-columns: 1fr !important; }
+            .dash-kpis { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
+
+            /* Dropdown tablet */
+            .user-dropdown .dropdown-menu {
+                position: fixed; top: 68px; right: 15px;
+                width: 260px; max-width: calc(100vw - 30px);
+                border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+            }
+        }
+
         /* ========== RESPONSIVO MOBILE (<768px) ========== */
         @media (max-width: 768px) {
             /* Sidebar drawer */
-            .sidebar { 
-                transform: translateX(-100%); 
-                box-shadow: none; 
+            .sidebar {
+                transform: translateX(-100%);
+                box-shadow: none;
                 width: 280px;
                 z-index: 999;
             }
-            .sidebar.show { 
-                transform: translateX(0); 
-                box-shadow: 20px 0 60px rgba(0,0,0,0.5); 
+            .sidebar.show {
+                transform: translateX(0);
+                box-shadow: 20px 0 60px rgba(0,0,0,0.5);
             }
             .main-content { margin-left: 0; width: 100%; }
             .mobile-toggle { display: flex !important; }
-            
-            /* Bottom nav aparece */
-            .bottom-nav { display: block; }
-            /* Extra padding para o conteúdo não ficar atrás do bottom nav */
-            .content { padding-bottom: 80px !important; }
 
-            /* Topbar simplified */
+            /* Bottom nav */
+            .bottom-nav { display: block; }
+            .content { padding: 14px 12px; padding-bottom: 90px !important; }
+
+            /* Topbar */
             .topbar { padding: 10px 14px; gap: 8px; }
-            .topbar-left { display: none; } /* busca fica no bottom no mobile */
+            .topbar-left { display: none; }
             .topbar-right { flex: 1; justify-content: flex-end; gap: 6px; }
             .quick-stat { display: none; }
             .user-info { display: none; }
             .notif-btn, .theme-btn { width: 36px; height: 36px; font-size: 1em; }
             .user-trigger { border: none; padding: 4px; background: transparent; }
             .user-avatar { width: 34px; height: 34px; font-size: 0.9em; }
-            
-            /* Content */
-            .content { padding: 14px 12px; }
+
+            /* Dropdown usuário no mobile */
+            .user-dropdown .dropdown-menu {
+                position: fixed; top: 62px; right: 12px;
+                width: calc(100vw - 24px); max-width: 300px;
+                border-radius: 14px;
+                box-shadow: 0 12px 40px rgba(0,0,0,0.18), 0 0 0 1px var(--border);
+                z-index: 1000;
+            }
+            .dropdown-header strong,
+            .dropdown-header small { max-width: calc(100vw - 80px); }
 
             /* Grids */
-            .grid-cards { grid-template-columns: 1fr; gap: 12px; }
-            .grid-forum  { grid-template-columns: 1fr; gap: 12px; }
+            .grid-cards { grid-template-columns: 1fr; gap: 10px; }
+            .grid-forum  { grid-template-columns: 1fr; gap: 10px; }
             .forum-grid-v2 { grid-template-columns: 1fr !important; }
             .forum-stats-bar { grid-template-columns: 1fr 1fr !important; }
-            
-            /* Page Header */
-            .page-header h1 { font-size: 1.25em; }
-            .page-header p   { font-size: 0.82em; }
-            .page-header-actions { flex-direction: column; align-items: stretch; }
-            .page-header-actions .btn { width: 100%; justify-content: center; }
-
-            /* Tables */
-            .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-            table { min-width: 560px; }
-
-            /* Modais slides de baixo */
-            .modal-overlay { align-items: flex-end; padding: 0; }
-            .modal-content {
-                width: 100%; max-width: 100%; margin: 0;
-                border-radius: 20px 20px 0 0;
-                padding-bottom: max(16px, env(safe-area-inset-bottom));
-                max-height: 92vh; overflow-y: auto;
-            }
-            .modal-header, .modal-body { padding: 18px 16px; }
 
             /* Cards */
-            .card { padding: 16px 14px; border-radius: 14px; }
+            .card { padding: 18px; }
+            .page-header h1 { font-size: 1.3em; }
 
-            /* KPIs 2 colunas */
-            .dash-kpis { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
-            .kpi-card { padding: 16px 14px !important; border-radius: 14px !important; }
-            .kpi-num  { font-size: 1.8em !important; }
+            /* Tabela responsiva */
+            .table-container { border-radius: 8px; }
+            tbody td { padding: 12px 14px; font-size: 0.88em; }
+            thead th { padding: 12px 14px; }
 
-            /* Hero smaller */
-            .dash-hero { padding: 20px 18px !important; border-radius: 16px !important; flex-direction: column !important; align-items: flex-start !important; }
-            .dash-hero-time { text-align: left !important; }
-            .dash-hero-time .clock { font-size: 1.8em !important; }
-            .dash-hero-text h1 { font-size: 1.5em !important; }
+            /* Perfil */
+            .profile-sticky-footer { padding: 16px; margin-top: 24px; }
 
-            /* Inputs */
-            .input-control, select, textarea { font-size: 16px; } /* evita zoom iOS */
+            /* Modais mobile */
+            .modal-overlay { padding: 10px; align-items: flex-end; }
+            .modal-content {
+                max-width: 100%; border-radius: 18px 18px 12px 12px;
+                max-height: 92vh;
+            }
+            .modal-header { padding: 16px 18px; }
+            .modal-header h2 { font-size: 1.05em; }
+            .modal-body { padding: 16px 18px; }
+            .modal-footer { padding: 12px 18px; gap: 8px; }
+            .modal-footer .btn { flex: 1; justify-content: center; }
 
-            /* Buttons */
-            .btn { padding: 10px 16px; font-size: 0.85em; }
-
-            /* Dropdown */
-            .dropdown-menu { right: 0; left: auto; min-width: 220px; }
+            /* Toast mobile */
+            #toast-container { bottom: 80px; right: 12px; left: 12px; max-width: 100%; }
         }
 
         @media (max-width: 480px) {
             .dash-kpis { grid-template-columns: 1fr !important; }
             .forum-stats-bar { grid-template-columns: 1fr !important; }
-            .content { padding: 10px 8px; }
+            .content { padding: 10px 8px; padding-bottom: 90px !important; }
             .topbar { padding: 8px 10px; }
+            .card { padding: 14px; }
+            .btn { padding: 8px 14px; font-size: 0.82em; }
+            .btn-lg { padding: 10px 16px !important; font-size: 0.88em !important; }
+
+            /* Modais telas pequenas */
+            .modal-overlay { padding: 0; align-items: flex-end; }
+            .modal-content {
+                border-radius: 20px 20px 0 0;
+                max-height: 95vh;
+            }
+            .modal-header h2 { font-size: 0.98em; }
+            .modal-body { padding: 14px 16px; }
+            .modal-footer { flex-direction: column; }
+            .modal-footer .btn { width: 100%; justify-content: center; }
         }
     </style>
 </head>
@@ -1529,6 +1622,8 @@ $banco_desatualizado = false;
 
     <!-- Overlay Mobile para fechar sidebar -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+    <!-- Backdrop para fechar dropdown do usuário -->
+    <div class="dropdown-backdrop" id="dropdown-backdrop" onclick="closeUserDropdown()"></div>
 
     <div class="app-container">
         
@@ -1555,7 +1650,7 @@ $banco_desatualizado = false;
                     <i class="fa-solid fa-comments"></i> Fórum
                 </a>
                 
-                <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN): ?>
+                <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $role === ROLE_EDITOR): ?>
                     <div class="nav-section-title">Administração</div>
                     <a href="?page=materiais" class="nav-link <?php if($pagina=='materiais') echo 'active';?>">
                         <i class="fa-solid fa-file-lines"></i> Materiais
@@ -1565,22 +1660,32 @@ $banco_desatualizado = false;
                     </a>
                     <?php
                     $pendentes_count = 0;
-                    try { $pendentes_count = $pdo->query("SELECT COUNT(*) FROM profissionais WHERE status = 'pendente'")->fetchColumn(); } catch(Exception $e) {}
+                    if($role !== ROLE_EDITOR) {
+                        try { $pendentes_count = $pdo->query("SELECT COUNT(*) FROM profissionais WHERE status = 'pendente'")->fetchColumn(); } catch(Exception $e) {}
+                    }
                     ?>
+                    <?php if($role !== ROLE_EDITOR): ?>
                     <a href="?page=solicitacoes" class="nav-link <?php if($pagina=='solicitacoes') echo 'active';?>">
                         <i class="fa-solid fa-user-clock"></i> Solicitações
                         <?php if($pendentes_count > 0): ?>
                             <span class="badge" style="background:var(--danger);color:white;padding:2px 8px;border-radius:10px;font-size:0.72em;margin-left:auto;"><?php echo $pendentes_count; ?></span>
                         <?php endif; ?>
                     </a>
+                    <?php endif; ?>
+
+                    <?php if($role !== ROLE_EDITOR): ?>
                     <a href="?page=configuracoes" class="nav-link <?php if($pagina=='configuracoes') echo 'active';?>">
                         <i class="fa-solid fa-gear"></i> Configurações
                     </a>
+                    <?php endif; ?>
                 <?php endif; ?>
 
                 <div class="nav-section-title">Comunidade</div>
                 <a href="?page=membros" class="nav-link <?php if($pagina=='membros') echo 'active';?>">
                     <i class="fa-solid fa-address-book"></i> Diretório de Membros
+                </a>
+                <a href="?page=eventos" class="nav-link <?php if($pagina=='eventos') echo 'active';?>">
+                    <i class="fa-solid fa-calendar-check"></i> Encontros & Eventos
                 </a>
                 
                 <?php if($role === ROLE_SUPERADMIN): ?>
@@ -1622,8 +1727,8 @@ $banco_desatualizado = false;
                 </div>
                 
                 <div class="topbar-right">
-                    <?php if ($role >= ROLE_ADMIN): 
-                        // Stats para Admin/SuperAdmin
+                    <?php if ($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $role === ROLE_EDITOR): 
+                        // Stats para Admin/SuperAdmin/Editor
                         $stats_users = $pdo->query("SELECT COUNT(*) FROM profissionais WHERE status = 'ativo'")->fetchColumn();
                         $stats_sugestoes = $pdo->query("SELECT COUNT(*) FROM sugestoes WHERE status = 'pendente'")->fetchColumn();
                     ?>
@@ -1637,7 +1742,7 @@ $banco_desatualizado = false;
                         </div>
                     <?php endif; ?>
                     
-                    <button class="notif-btn" title="Notificações">
+                    <button class="notif-btn" onclick="openModal('modalNotificacoes')" title="Notificações">
                         <i class="fa-solid fa-bell"></i>
                         <?php if ($role >= ROLE_ADMIN && $stats_sugestoes > 0): ?>
                             <span class="notif-badge"><?php echo $stats_sugestoes; ?></span>
@@ -1649,7 +1754,7 @@ $banco_desatualizado = false;
                     </button>
                     
                     <div class="user-dropdown">
-                        <div class="user-trigger" onclick="toggleUserDropdown()">
+                        <div class="user-trigger" onclick="toggleUserDropdown(event)">
                             <div class="user-info">
                                 <div class="name"><?php echo $primeiro_nome; ?></div>
                                 <div class="role"><?php 
@@ -1662,57 +1767,26 @@ $banco_desatualizado = false;
                         
                         <div class="dropdown-menu" id="user-dropdown">
                             <div class="dropdown-header">
-                                <strong><?php echo htmlspecialchars($user['nome']); ?></strong>
+                                <strong><?php echo htmlspecialchars($primeiro_nome); ?></strong>
                                 <small><?php echo htmlspecialchars($user['email']); ?></small>
                             </div>
-                            <a href="?page=dashboard" class="dropdown-item">
-                                <i class="fa-solid fa-home"></i>
-                                Dashboard
-                            </a>
                             <a href="?page=perfil" class="dropdown-item">
                                 <i class="fa-solid fa-user-circle"></i>
                                 Meu Perfil
                             </a>
-                            <a href="#" onclick="openModal('modalTrocarSenha'); return false;" class="dropdown-item">
+                            <a href="#" onclick="openModal('modalTrocarSenha'); closeUserDropdown(); return false;" class="dropdown-item">
                                 <i class="fa-solid fa-key"></i>
                                 Trocar Senha
                             </a>
-                            <a href="?page=biblioteca" class="dropdown-item">
-                                <i class="fa-solid fa-graduation-cap"></i>
-                                Aprendizados
-                            </a>
-                            <a href="?page=forum" class="dropdown-item">
-                                <i class="fa-solid fa-comments"></i>
-                                Fórum
-                            </a>
-                            <?php if ($role >= ROLE_ADMIN): ?>
-                                <div class="dropdown-divider"></div>
-                                <a href="?page=materiais" class="dropdown-item">
-                                    <i class="fa-solid fa-folder"></i>
-                                    Gerenciar Materiais
-                                </a>
-                                <a href="?page=solicitacoes" class="dropdown-item">
-                                    <i class="fa-solid fa-user-clock"></i>
-                                    Solicitações
-                                </a>
-                                <a href="?page=sugestoes" class="dropdown-item">
-                                    <i class="fa-solid fa-lightbulb"></i>
-                                    Sugestões
-                                </a>
+                            <?php if ($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN): ?>
                                 <a href="?page=configuracoes" class="dropdown-item">
                                     <i class="fa-solid fa-gear"></i>
                                     Configurações
                                 </a>
                             <?php endif; ?>
-                            <?php if ($role === ROLE_SUPERADMIN): ?>
-                                <a href="?page=usuarios" class="dropdown-item">
-                                    <i class="fa-solid fa-users-cog"></i>
-                                    Gerenciar Usuários
-                                </a>
-                            <?php endif; ?>
                             <div class="dropdown-divider"></div>
                             <a href="?sair=1" class="dropdown-item" style="color: var(--danger)">
-                                <i class="fa-solid fa-sign-out-alt"></i>
+                                <i class="fa-solid fa-right-from-bracket"></i>
                                 Sair
                             </a>
                         </div>
@@ -1914,9 +1988,13 @@ if ($pagina === 'dashboard'):
 }
 @media (max-width: 900px) {
     .dash-row, .dash-row.row-3 { grid-template-columns: 1fr; }
-    .dash-hero { flex-direction: column; text-align: center; }
+    .dash-hero { flex-direction: column; text-align: center; padding: 24px 20px; }
     .dash-hero-time { text-align: center; }
+    .dash-hero-text h1 { font-size: 1.5em; }
+    .dash-hero-time .clock { font-size: 1.8em; }
     .dash-kpis { grid-template-columns: repeat(2, 1fr); }
+    .kpi-value { font-size: 1.7em; }
+    .kpi-card { padding: 16px; }
 }
 
 .dash-section-title {
@@ -2407,7 +2485,7 @@ elseif ($pagina === 'perfil'):
     $user_p = getUsuarioLogado();
     $formacao_pos = json_decode($user_p['formacao_pos'] ?? '[]', true);
 ?>
-    <div class="page-header" style="background: linear-gradient(135deg, rgba(110, 43, 58, 0.05) 0%, rgba(212, 165, 116, 0.05) 100%); padding: 40px; border-radius: 20px; margin-bottom: 40px; border: 1px solid rgba(110, 43, 58, 0.1);">
+    <div class="page-header" style="background: linear-gradient(135deg, rgba(110, 43, 58, 0.05) 0%, rgba(212, 165, 116, 0.05) 100%); padding: 24px 28px; border-radius: 14px; margin-bottom: 24px; border: 1px solid rgba(110, 43, 58, 0.1);">
         <div class="page-title">
             <i class="fa-solid fa-id-card-clip" style="color: var(--primary); font-size: 1.5em;"></i>
             <h1 style="font-family: 'Playfair Display', serif; font-weight: 800;">Minha Identidade Digital</h1>
@@ -2557,6 +2635,39 @@ elseif ($pagina === 'perfil'):
                     </div>
                 </div>
 
+                <!-- Sessão: Detalhes do Profissional -->
+                <div class="card glass-card" style="margin-bottom: 25px;">
+                    <div class="dash-section-title"><i class="fa-solid fa-briefcase"></i> Atuação Detalhada</div>
+
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>O Que Você Faz? (Resumo da sua atuação)</label>
+                            <input type="text" name="descricao_trabalho" class="input-control premium-input" value="<?php echo htmlspecialchars($user_p['descricao_trabalho'] ?? ''); ?>" placeholder="Ex: Avaliação Neuropsicológica Infantil, etc">
+                        </div>
+                        <div class="input-group">
+                            <label>Endereço de Atendimento / Clínica</label>
+                            <input type="text" name="endereco" class="input-control premium-input" value="<?php echo htmlspecialchars($user_p['endereco'] ?? ''); ?>" placeholder="Seu endereço comercial ou 'Atendimento Online'">
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Disponível para Parcerias?</label>
+                            <select name="aceita_parcerias" class="input-control premium-input">
+                                <option value="Sim" <?php echo ($user_p['aceita_parcerias'] ?? '') === 'Sim' ? 'selected' : ''; ?>>Sim, estou aberto(a) a indicações e parcerias</option>
+                                <option value="Não" <?php echo ($user_p['aceita_parcerias'] ?? 'Não') === 'Não' ? 'selected' : ''; ?>>Não, no momento não</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Trabalha com Preço Social / Instituições?</label>
+                            <select name="preco_social" class="input-control premium-input">
+                                <option value="Sim" <?php echo ($user_p['preco_social'] ?? '') === 'Sim' ? 'selected' : ''; ?>>Sim, realizo atendimentos sociais</option>
+                                <option value="Não" <?php echo ($user_p['preco_social'] ?? 'Não') === 'Não' ? 'selected' : ''; ?>>Não realizo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Sessão: Presença Digital -->
                 <div class="card glass-card" style="margin-bottom: 30px;">
                     <div class="dash-section-title"><i class="fa-solid fa-share-nodes"></i> Presença Digital & Biografia</div>
@@ -2593,7 +2704,7 @@ elseif ($pagina === 'perfil'):
 
     <style>
         .profile-layout { display: grid; grid-template-columns: 320px 1fr; gap: 40px; align-items: start; }
-        .premium-photo-card { padding: 40px 30px !important; text-align: center; border-radius: 24px; background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); border: 1px solid rgba(110, 43, 58, 0.08); }
+        .premium-photo-card { padding: 24px 20px !important; text-align: center; border-radius: 16px; background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); border: 1px solid rgba(110, 43, 58, 0.08); }
         .avatar-container { margin: 20px 0; display: flex; justify-content: center; }
         .avatar-wrapper { 
             width: 190px; height: 190px; border-radius: 50%; border: 8px solid #fff; 
@@ -2626,21 +2737,32 @@ elseif ($pagina === 'perfil'):
             cursor: pointer; transition: 0.2s;
         }
         .btn-remove-row:hover { background: #ffe4e6; transform: scale(1.05); }
-        .profile-sticky-footer { 
-            margin-top: 50px; padding: 30px; background: rgba(110, 43, 58, 0.03); 
-            border-radius: 20px; border: 1px dashed rgba(110, 43, 58, 0.2);
+        .profile-sticky-footer {
+            margin-top: 28px; padding: 20px; background: rgba(110, 43, 58, 0.03);
+            border-radius: 14px; border: 1px dashed rgba(110, 43, 58, 0.2);
         }
-        .btn-save-premium { width: 100%; padding: 22px; font-size: 1.25em; border-radius: 16px; font-weight: 800; letter-spacing: 0.5px; box-shadow: 0 10px 25px rgba(110, 43, 58, 0.2); }
+        .btn-save-premium { width: 100%; padding: 14px 20px; font-size: 0.95em; border-radius: 10px; font-weight: 700; letter-spacing: 0.3px; box-shadow: 0 4px 14px rgba(110, 43, 58, 0.2); }
         .btn-upload-anim:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(110, 43, 58, 0.2); }
 
         @keyframes slideInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        @media (max-width: 992px) {
+        @media (max-width: 1024px) {
             .profile-layout { grid-template-columns: 1fr; }
             .form-grid { grid-template-columns: 1fr; }
             .profile-sidebar { order: 2; }
             .profile-main { order: 1; }
+            .avatar-wrapper { width: 140px; height: 140px; }
+            .avatar-placeholder { font-size: 4em; }
+            .btn-save-premium { padding: 12px 18px !important; font-size: 0.9em !important; }
         }
+
+        /* Spinner Animado */
+        .loading-spinner-rings {
+            width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: #fff; border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 
     <script>
@@ -2756,6 +2878,11 @@ elseif ($pagina === 'membros'):
                         <?php echo !empty($m['bio']) ? htmlspecialchars(mb_substr($m['bio'], 0, 100)) . '...' : 'Olá! Faça parte da nossa rede de profissionais em Tatuí.'; ?>
                     </p>
 
+                    <a href="?page=ver_perfil&id=<?php echo $m['id']; ?>" class="btn btn-outline" style="margin-bottom: 15px; border-radius: 8px; width: 100%; border-style: dashed; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;">
+                        <i class="fa-solid fa-address-card"></i> 
+                        <span>Ver Perfil Detalhado</span>
+                    </a>
+
                     <div style="display: flex; justify-content: center; gap: 15px; border-top: 1px solid var(--border); padding-top: 15px;">
                         <?php if(!empty($m['instagram'])): ?>
                             <a href="https://instagram.com/<?php echo str_replace('@', '', $m['instagram']); ?>" target="_blank" style="color: #E1306C; font-size: 1.3em;" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
@@ -2770,29 +2897,196 @@ elseif ($pagina === 'membros'):
         <?php endforeach; ?>
     </div>
 
-<script>
-// Contador animado dos KPI
-document.querySelectorAll('.kpi-value[data-target]').forEach(el => {
-    const target = parseInt(el.dataset.target) || 0;
-    if(target === 0) { el.textContent = '0'; return; }
-    let current = 0;
-    const step = Math.max(1, Math.floor(target / 30));
-    const timer = setInterval(() => {
-        current = Math.min(current + step, target);
-        el.textContent = current;
-        if(current >= target) clearInterval(timer);
-    }, 40);
-});
-
-// Barra de progresso animada
-document.querySelectorAll('.progress-bar-fill[data-width]').forEach(el => {
-    setTimeout(() => {
-        el.style.width = el.dataset.width + '%';
-    }, 300);
-});
-</script>
-
 <?php 
+// ### PÁGINA: VER PERFIL DETALHADO ###
+elseif ($pagina === 'ver_perfil'):
+    $id_ver = $_GET['id'] ?? 0;
+    $stmt = $pdo->prepare("SELECT * FROM profissionais WHERE id = ?");
+    $stmt->execute([$id_ver]);
+    $m = $stmt->fetch();
+
+    if (!$m) {
+        echo "<div class='card glass-card' style='text-align:center; padding:100px 20px;'><i class='fa-solid fa-user-slash' style='font-size:4em; color:var(--text-muted); opacity:0.3; margin-bottom:20px;'></i><h1>Usuário não encontrado</h1><a href='?page=membros' class='btn btn-primary' style='margin-top:20px;'>Voltar ao Diretório</a></div>";
+    } else {
+        $sigla_reg = !empty($m['registro_tipo']) ? $m['registro_tipo'] . " " . $m['registro_numero'] : "";
+        $profissao_f = formatarProfissao($m['especialidade'], $m['genero'] ?? '');
+?>
+    <div class="profile-public-container anim-fade">
+        <!-- Header / Banner -->
+        <div class="profile-public-header" style="background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);">
+            <a href="?page=membros" class="btn-back-public"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+        </div>
+
+        <div class="profile-public-content">
+            <!-- Sidebar: Foto e Infos Rápidas -->
+            <div class="profile-public-sidebar">
+                <div class="card glass-card public-photo-card">
+                    <div class="public-avatar-wrapper">
+                        <?php if(!empty($m['foto']) && file_exists($m['foto'])): ?>
+                            <img src="<?php echo $m['foto']; ?>" class="public-avatar-img">
+                        <?php else: ?>
+                            <div class="public-avatar-placeholder"><?php echo strtoupper(substr($m['nome'], 0, 1)); ?></div>
+                        <?php endif; ?>
+                    </div>
+                    <h2 class="public-nome"><?php echo htmlspecialchars($m['nome']); ?></h2>
+                    <div class="public-tag"><?php echo htmlspecialchars($profissao_f); ?></div>
+                    
+                    <?php if(!empty($sigla_reg)): ?>
+                    <div class="public-reg"><?php echo htmlspecialchars($sigla_reg); ?></div>
+                    <?php endif; ?>
+
+                    <div class="public-contacts">
+                        <a href="https://wa.me/<?php echo preg_replace('/[^0-9]/', '', $m['whatsapp']); ?>" target="_blank" class="btn btn-success btn-block" style="border-radius:12px; margin-bottom:10px;">
+                            <i class="fa-brands fa-whatsapp"></i> Chamar WhatsApp
+                        </a>
+                        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                            <?php if(!empty($m['instagram'])): ?>
+                                <a href="https://instagram.com/<?php echo str_replace('@', '', $m['instagram']); ?>" target="_blank" class="contact-circle inst" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                            <?php endif; ?>
+                            <?php if(!empty($m['website'])): ?>
+                                <a href="<?php echo $m['website']; ?>" target="_blank" class="contact-circle web" title="Website"><i class="fa-solid fa-globe"></i></a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card glass-card" style="margin-top:20px; padding:20px;">
+                    <div class="dash-section-title" style="margin-bottom:10px;"><i class="fa-solid fa-location-dot"></i> Endereço</div>
+                    <p style="font-size:0.9em; color:var(--text-main); line-height:1.5;">
+                        <?php echo !empty($m['endereco']) ? htmlspecialchars($m['endereco']) : 'Atendimento a combinar / Online'; ?>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Main: Bio e Formação -->
+            <div class="profile-public-main">
+                <div class="card glass-card" style="margin-bottom:24px;">
+                    <div class="dash-section-title"><i class="fa-solid fa-user-tie"></i> Sobre Mim / Biografia</div>
+                    <div class="public-bio-text">
+                        <?php echo !empty($m['bio']) ? nl2br(htmlspecialchars($m['bio'])) : 'Olá! Sou profissional da rede Melodias.'; ?>
+                    </div>
+                </div>
+
+                <div class="card glass-card" style="margin-bottom:24px;">
+                    <div class="dash-section-title"><i class="fa-solid fa-briefcase"></i> O Quê Faço</div>
+                    <div class="public-bio-text">
+                        <?php echo !empty($m['descricao_trabalho']) ? nl2br(htmlspecialchars($m['descricao_trabalho'])) : 'Informação não detalhada.'; ?>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                        <div class="status-badge-public">
+                            <span class="label">Aceita Parcerias?</span>
+                            <span class="value <?php echo $m['aceita_parcerias']==='Sim'?'success':'muted'; ?>"><?php echo $m['aceita_parcerias'] ?? 'Não'; ?></span>
+                        </div>
+                        <div class="status-badge-public">
+                            <span class="label">Preço Social?</span>
+                            <span class="value <?php echo $m['preco_social']==='Sim'?'info':'muted'; ?>"><?php echo $m['preco_social'] ?? 'Não'; ?></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card glass-card">
+                    <div class="dash-section-title"><i class="fa-solid fa-graduation-cap"></i> Formação & Especialidades</div>
+                    
+                    <div class="academic-timeline">
+                        <?php if(!empty($m['formacao_superior'])): ?>
+                            <div class="academic-item">
+                                <div class="academic-icon"><i class="fa-solid fa-university"></i></div>
+                                <div class="academic-details">
+                                    <strong>Formação Acadêmica</strong>
+                                    <span><?php echo htmlspecialchars($m['formacao_superior']); ?></span>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php 
+                        try {
+                            $pos = json_decode($m['formacao_pos'] ?? '[]', true);
+                            if(!empty($pos)):
+                                foreach($pos as $p): if(empty($p)) continue;
+                        ?>
+                            <div class="academic-item">
+                                <div class="academic-icon pos"><i class="fa-solid fa-certificate"></i></div>
+                                <div class="academic-details">
+                                    <strong>Especialização / Pós</strong>
+                                    <span><?php echo htmlspecialchars($p); ?></span>
+                                </div>
+                            </div>
+                        <?php endforeach; endif; } catch(Exception $e){} ?>
+                    </div>
+
+                    <?php if(!empty($m['area_atuacao'])): ?>
+                        <div style="margin-top:25px; padding-top:20px; border-top: 1px solid var(--border);">
+                            <strong>Foco de Atuação:</strong>
+                            <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:8px;">
+                                <?php 
+                                $tags = explode(',', $m['area_atuacao']);
+                                foreach($tags as $t): if(trim($t) !== ''):
+                                ?>
+                                    <span class="atuacao-tag"><?php echo htmlspecialchars(trim($t)); ?></span>
+                                <?php endif; endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php } ?>
+
+    <style>
+        .profile-public-container { background: var(--bg-body); min-height: 100vh; margin: -20px; }
+        .profile-public-header { height: 200px; position: relative; display: flex; align-items: flex-start; padding: 30px; }
+        .btn-back-public { background: rgba(255,255,255,0.2); color: white; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-weight: 700; backdrop-filter: blur(10px); transition: 0.3s; }
+        .btn-back-public:hover { background: rgba(255,255,255,0.3); transform: translateX(-5px); }
+        
+        .profile-public-content { max-width: 1100px; margin: -100px auto 50px; padding: 0 20px; display: grid; grid-template-columns: 340px 1fr; gap: 30px; }
+        .public-photo-card { text-align: center; padding: 24px 16px !important; }
+        .public-avatar-wrapper { width: 180px; height: 180px; border-radius: 50%; border: 6px solid #fff; box-shadow: var(--shadow-lg); overflow: hidden; margin: 0 auto 20px; background: #f8fafc; }
+        .public-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+        .public-avatar-placeholder { width: 100%; height: 100%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 5em; font-weight: 800; color: #94a3b8; }
+        
+        .public-nome { font-size: 1.8em; color: var(--primary); margin-bottom: 5px; font-family: 'Playfair Display', serif; }
+        .public-tag { font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-size: 0.85em; margin-bottom: 15px; }
+        .public-reg { display: inline-block; background: rgba(110,43,58,0.06); color: var(--primary); padding: 5px 15px; border-radius: 20px; font-size: 0.8em; font-weight: 800; margin-bottom: 25px; }
+        
+        .contact-circle { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25em; color: white; transition: 0.3s; }
+        .contact-circle.inst { background: #E1306C; }
+        .contact-circle.web { background: var(--info); }
+        .contact-circle:hover { transform: scale(1.15) rotate(10deg); box-shadow: var(--shadow-lg); }
+
+        .public-bio-text { color: var(--text-main); line-height: 1.8; font-size: 1em; }
+        .atuacao-tag { background: white; border: 1.5px solid var(--border); padding: 6px 14px; border-radius: 50px; font-size: 0.82em; font-weight: 600; color: var(--text-muted); }
+        
+        .status-badge-public { display: flex; flex-direction: column; }
+        .status-badge-public .label { font-size: 0.75em; color: var(--text-muted); font-weight: 700; text-transform: uppercase; }
+        .status-badge-public .value { font-weight: 800; font-size: 1.05em; }
+        .status-badge-public .value.success { color: var(--success); }
+        .status-badge-public .value.info { color: var(--info); }
+        .status-badge-public .value.muted { color: #94a3b8; }
+
+        .academic-timeline { display: flex; flex-direction: column; gap: 20px; margin-top: 10px; }
+        .academic-item { display: flex; gap: 15px; align-items: flex-start; }
+        .academic-icon { width: 40px; height: 40px; background: rgba(110, 43, 58, 0.08); color: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .academic-icon.pos { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .academic-details { display: flex; flex-direction: column; }
+        .academic-details strong { font-size: 0.9em; color: var(--text-main); }
+        .academic-details span { font-size: 0.85em; color: var(--text-muted); }
+
+        @media (max-width: 900px) {
+            .profile-public-content { grid-template-columns: 1fr; }
+            .profile-public-sidebar { order: 2; }
+            .profile-public-main { order: 1; }
+            .profile-public-header { height: 150px; }
+            .public-nome { font-size: 1.4em; }
+        }
+        @media (max-width: 480px) {
+            .profile-public-content { padding: 0 12px; margin-top: -60px; }
+            .public-avatar-wrapper { width: 130px; height: 130px; }
+        }
+    </style>
+<?php 
+// ### PÁGINAS SEGUINTES... ###
 // ### PÁGINAS: APRENDIZADOS E MATERIAIS DE APOIO ###
 elseif ($pagina === 'biblioteca' || $pagina === 'materiais_apoio'):
     $is_apoio = ($pagina === 'materiais_apoio');
@@ -2854,14 +3148,14 @@ elseif ($pagina === 'biblioteca' || $pagina === 'materiais_apoio'):
                         <?php foreach($lista as $m): ?>
                             <div class="card material-item" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.3s ease;">
                                 <?php if(!empty($m['capa'])): ?>
-                                    <div style="position: relative; cursor: pointer;" onclick='abrirPreview(<?php echo json_encode($m); ?>)'>
+                                    <div style="position: relative; cursor: pointer;" onclick='abrirPreview(<?php echo htmlspecialchars(json_encode($m), ENT_QUOTES, "UTF-8"); ?>)'>
                                         <img src="<?php echo htmlspecialchars($m['capa']); ?>" alt="Capa" style="width: 100%; height: 180px; object-fit: cover;">
                                         <div class="overlay-preview" style="position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; opacity:0; transition:0.3s;">
                                             <i class="fa-solid fa-eye" style="color:white; font-size:2em;"></i>
                                         </div>
                                     </div>
                                 <?php else: ?>
-                                    <div onclick='abrirPreview(<?php echo json_encode($m); ?>)' style="width: 100%; height: 180px; background: linear-gradient(135deg, <?php echo $secao['color']; ?>22 0%, <?php echo $secao['color']; ?>11 100%); display: flex; align-items: center; justify-content: center; color: <?php echo $secao['color']; ?>; font-size: 4em; cursor: pointer;">
+                                    <div onclick='abrirPreview(<?php echo htmlspecialchars(json_encode($m), ENT_QUOTES, "UTF-8"); ?>)' style="width: 100%; height: 180px; background: linear-gradient(135deg, <?php echo $secao['color']; ?>22 0%, <?php echo $secao['color']; ?>11 100%); display: flex; align-items: center; justify-content: center; color: <?php echo $secao['color']; ?>; font-size: 4em; cursor: pointer;">
                                         <i class="fa-solid <?php echo $secao['icon']; ?>"></i>
                                     </div>
                                 <?php endif; ?>
@@ -2890,7 +3184,7 @@ elseif ($pagina === 'biblioteca' || $pagina === 'materiais_apoio'):
                                         $btn_text = $m['tipo'] === 'minicurso' ? 'Assistir' : ($m['tipo'] === 'ebook' ? 'Ler Online' : 'Visualizar');
                                         $btn_icon = $m['tipo'] === 'minicurso' ? 'fa-play' : ($m['tipo'] === 'ebook' ? 'fa-book-open' : 'fa-eye');
                                         ?>
-                                        <button onclick='abrirPreview(<?php echo json_encode($m); ?>)' class="btn" style="background: <?php echo $secao['color']; ?>; color: white; border-radius: 8px; font-weight: 700;">
+                                        <button onclick='abrirPreview(<?php echo htmlspecialchars(json_encode($m), ENT_QUOTES, "UTF-8"); ?>)' class="btn" style="background: <?php echo $secao['color']; ?>; color: white; border-radius: 8px; font-weight: 700;">
                                             <i class="fa-solid <?php echo $btn_icon; ?>"></i> <?php echo $btn_text; ?>
                                         </button>
                                         
@@ -2981,7 +3275,7 @@ elseif ($pagina === 'materiais'):
                                     <a href="<?php echo $m['caminho']; ?>" download class="btn btn-outline btn-sm" style="flex: 1; text-align: center; max-height: 38px; display: flex; align-items: center; justify-content: center;">
                                         <i class="fa-solid fa-download"></i> <span style="margin-left:5px;">Baixar</span>
                                     </a>
-                                    <button onclick='editarMaterial(<?php echo json_encode($m); ?>)' class="btn btn-primary btn-icon btn-sm" title="Editar">
+                                    <button onclick='editarMaterial(<?php echo htmlspecialchars(json_encode($m), ENT_QUOTES, "UTF-8"); ?>)' class="btn btn-primary btn-icon btn-sm" title="Editar">
                                         <i class="fa-solid fa-pen"></i>
                                     </button>
                                     <button onclick="confirmarDelete('material', <?php echo $m['id']; ?>, '<?php echo addslashes($m['titulo']); ?>')" class="btn btn-danger btn-icon btn-sm" title="Excluir">
@@ -3158,36 +3452,7 @@ elseif ($pagina === 'materiais'):
                     </div>
                 </div>
 
-                <!-- Modal: Preview / Leitura Online -->
-                <div class="modal-overlay" id="modalPreview">
-                    <div class="modal-content" style="max-width: 95vw; width: 1200px; height: 95vh; display: flex; flex-direction: column; overflow: hidden;">
-                        <div class="modal-header" style="background: var(--bg-card); border-bottom: 1px solid var(--border);">
-                            <h2 id="previewTitle" style="margin: 0; font-size: 1.2em;"><i class="fa-solid fa-eye"></i> Visualização</h2>
-                            <button class="close-modal" onclick="closeModal('modalPreview')">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body" style="flex: 1; padding: 0; overflow: hidden; background: #1a1a1a; position: relative; display: flex; align-items: center; justify-content: center;">
-                            <div id="previewLoader" style="position: absolute; color: white; display: flex; flex-direction: column; align-items: center; gap: 15px; z-index: 10;">
-                                <i class="fa-solid fa-circle-notch fa-spin fa-2x"></i>
-                                <span>Carregando conteúdo...</span>
-                            </div>
-                            <iframe id="previewFrame" style="width: 100%; height: 100%; border: none; display: none; background: white;" onload="this.style.display='block'; document.getElementById('previewLoader').style.display='none';"></iframe>
-                            <div id="previewImageContainer" style="display: none; width: 100%; height: 100%; overflow: auto; padding: 20px; text-align: center;">
-                                <img id="previewImage" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-                            </div>
-                            <div id="previewVideoContainer" style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center;">
-                                <video id="previewVideo" controls style="max-width: 100%; max-height: 100%;"></video>
-                            </div>
-                        </div>
-                        <div class="modal-footer" style="padding: 15px 25px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                            <div id="previewAuthor" style="color: var(--text-muted); font-size: 0.9em; font-weight: 500;"></div>
-                            <a id="previewDownload" href="#" download class="btn btn-primary" style="padding: 10px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
-                                <i class="fa-solid fa-download"></i> Baixar Original
-                            </a>
-                        </div>
-                    </div>
-                </div>
+
 
 <?php 
 // ### PÁGINA: SUGESTÕES (ADMIN/SUPERADMIN) ###
@@ -3521,6 +3786,8 @@ elseif ($pagina === 'usuarios'):
                                             echo '<span class="badge badge-purple"><i class="fa-solid fa-crown"></i> Super Admin</span>';
                                         } elseif($u['role'] === ROLE_ADMIN) {
                                             echo '<span class="badge badge-danger"><i class="fa-solid fa-shield"></i> Admin</span>';
+                                        } elseif($u['role'] === ROLE_EDITOR) {
+                                            echo '<span class="badge" style="background:var(--accent); color:white;"><i class="fa-solid fa-pen-nib"></i> Editor</span>';
                                         } else {
                                             echo '<span class="badge badge-info"><i class="fa-solid fa-user"></i> Membro</span>';
                                         }
@@ -3535,7 +3802,7 @@ elseif ($pagina === 'usuarios'):
                                 </td>
                                 <td style="text-align: right;">
                                     <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                                        <button onclick='editarUsuario(<?php echo json_encode($u); ?>)' 
+                                        <button onclick='editarUsuario(<?php echo htmlspecialchars(json_encode($u), ENT_QUOTES, "UTF-8"); ?>)' 
                                                 class="btn btn-outline btn-icon btn-sm" title="Editar">
                                             <i class="fa-solid fa-pen"></i>
                                         </button>
@@ -3614,6 +3881,7 @@ elseif ($pagina === 'usuarios'):
                                     <label>Nível de Permissão *</label>
                                     <select name="role" class="input-control">
                                         <option value="user">👤 Usuário Normal (Membro)</option>
+                                        <option value="editor">✍️ Editor (Materiais/Eventos)</option>
                                         <option value="admin">🛡️ Administrador</option>
                                         <option value="superadmin">👑 Super Administrador</option>
                                     </select>
@@ -3677,6 +3945,7 @@ elseif ($pagina === 'usuarios'):
                                     <label>Nível de Permissão *</label>
                                     <select name="role" id="edit_user_role" class="input-control">
                                         <option value="user">👤 Usuário Normal (Membro)</option>
+                                        <option value="editor">✍️ Editor (Materiais/Eventos)</option>
                                         <option value="admin">🛡️ Administrador</option>
                                         <option value="superadmin">👑 Super Administrador</option>
                                     </select>
@@ -4165,6 +4434,158 @@ function curtirPost(postId) {
 <?php endif; // fecha if($post_id): ?>
 
 <?php 
+// ### PÁGINA: EVENTOS / ENCONTROS ###
+elseif ($pagina === 'eventos'):
+    $eventos = $pdo->query("SELECT * FROM eventos ORDER BY data_evento ASC")->fetchAll();
+    
+    // Pega as presenças do usuário logado
+    $presencas_user = [];
+    $stmt = $pdo->prepare("SELECT evento_id, status FROM eventos_presenca WHERE user_id = ?");
+    $stmt->execute([$id_usuario]);
+    while($row = $stmt->fetch()) {
+        $presencas_user[$row['evento_id']] = $row['status'];
+    }
+?>
+    <div class="page-header-actions">
+        <div>
+            <h1><i class="fa-solid fa-calendar-check"></i> Encontros & Eventos</h1>
+            <p style="color: var(--text-muted);">Acompanhe os próximos encontros da rede Melodias e confirme sua participação.</p>
+        </div>
+        <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $role === ROLE_EDITOR): ?>
+        <button onclick="openModal('modalAddEvento')" class="btn btn-primary" style="border-radius: 8px;">
+            <i class="fa-solid fa-plus"></i> Criar Novo Evento
+        </button>
+        <?php endif; ?>
+    </div>
+
+    <div class="grid-cards" style="margin-top: 25px;">
+        <?php if(count($eventos) > 0): foreach($eventos as $ev): ?>
+            <div class="card event-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+                <div style="background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%); padding: 20px; color: white; position: relative;">
+                    <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $role === ROLE_EDITOR): ?>
+                    <button onclick="confirmarDelete('evento', <?php echo $ev['id']; ?>, '<?php echo addslashes($ev['titulo']); ?>')" class="btn btn-danger btn-sm" style="position: absolute; top: 15px; right: 15px; border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(239, 68, 68, 0.8);" title="Excluir Evento">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                    <?php endif; ?>
+                    <h3 style="margin: 0; font-size: 1.3em; font-weight: 800; padding-right: 30px;"><?php echo htmlspecialchars($ev['titulo']); ?></h3>
+                    <div style="font-size: 0.85em; margin-top: 10px; opacity: 0.9; display: flex; gap: 15px; flex-wrap: wrap;">
+                        <span style="display: flex; align-items: center; gap: 5px;"><i class="fa-regular fa-calendar"></i> <?php echo date('d/m/Y \à\s H:i', strtotime($ev['data_evento'])); ?></span>
+                        <?php if(!empty($ev['local'])): ?>
+                            <span style="display: flex; align-items: center; gap: 5px;"><i class="fa-solid fa-location-dot"></i> <?php echo htmlspecialchars($ev['local']); ?></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div style="padding: 20px; flex: 1; display: flex; flex-direction: column;">
+                    <p style="font-size: 0.9em; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; flex: 1; white-space: pre-wrap;"><?php echo htmlspecialchars($ev['descricao'] ?? ''); ?></p>
+                    
+                    <?php 
+                        $presencas_total = $pdo->query("SELECT COUNT(*) FROM eventos_presenca WHERE evento_id = {$ev['id']} AND status = 'confirmado'")->fetchColumn();
+                        $status_user = $presencas_user[$ev['id']] ?? null;
+                    ?>
+                    
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 15px; margin-bottom: 15px;">
+                        <span style="font-size: 0.85em; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 5px;"><i class="fa-solid fa-users"></i> <?php echo $presencas_total; ?> confirmados</span>
+                        <?php if(!empty($ev['mapa_link'])): ?>
+                            <a href="<?php echo htmlspecialchars($ev['mapa_link'] ?? ''); ?>" target="_blank" class="btn btn-outline btn-sm" style="font-size: 0.8em; border-radius: 20px; color: var(--info); border-color: #dbeafe; padding: 4px 10px;"><i class="fa-solid fa-map"></i> Ver Mapa</a>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <?php if($status_user === 'confirmado'): ?>
+                            <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'remover')" class="btn btn-success" style="opacity: 0.9; cursor: pointer; grid-column: 1 / -1; border-radius: 8px;"><i class="fa-solid fa-check-double"></i> Presença Confirmada (Desfazer)</button>
+                        <?php else: ?>
+                            <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'confirmado')" class="btn btn-primary" style="border-radius: 8px;"><i class="fa-solid fa-user-check"></i> Eu vou participar</button>
+                            <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'recusado')" class="btn btn-outline" style="border-radius: 8px; <?php echo ($status_user === 'recusado') ? 'background: #f1f5f9; border-color: #cbd5e1; color: #94a3b8;' : 'border-style: dashed;'; ?>"><i class="fa-solid fa-xmark"></i> Não poderei</button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; else: ?>
+            <div class="card" style="grid-column: 1 / -1; padding: 60px; text-align: center;">
+                <i class="fa-solid fa-calendar-xmark" style="font-size: 4em; color: var(--text-muted); opacity: 0.3; margin-bottom: 20px; display: block;"></i>
+                <h3 style="color: var(--text-main); font-size: 1.3em;">Nenhum encontro agendado</h3>
+                <p style="color: var(--text-muted); margin-top: 5px;">Acompanhe o painel, em breve novas oportunidades para se conectar com a rede.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+    
+    <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN): ?>
+    <!-- Modal Add Evento -->
+    <div class="modal-overlay" id="modalAddEvento">
+        <div class="modal-content" style="max-width: 550px;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-calendar-plus"></i> Novo Evento</h2>
+                <button class="close-modal" onclick="closeModal('modalAddEvento')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST">
+                    <input type="hidden" name="acao" value="add_evento">
+                    <div class="input-group">
+                        <label>Título do Evento *</label>
+                        <input type="text" name="titulo" class="input-control premium-input" required placeholder="Ex: Café de Networking, Encontro Mensal...">
+                    </div>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Data e Hora *</label>
+                            <input type="datetime-local" name="data_evento" class="input-control premium-input" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Localização / Formato *</label>
+                            <input type="text" name="local" class="input-control premium-input" required placeholder="Ex: Online (Zoom), Clínica Melodias...">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Link para Mapa (Opcional)</label>
+                        <input type="url" name="mapa_link" class="input-control premium-input" placeholder="Google Maps ou Link do Zoom">
+                    </div>
+                    <div class="input-group">
+                        <label>Descrição / Pauta</label>
+                        <textarea name="descricao" class="input-control premium-input" rows="4" placeholder="Detalhes do encontro..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 15px; border-radius: 12px; font-weight: 800;"><i class="fa-solid fa-paper-plane"></i> Publicar Evento</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+    
+    <script>
+    function confirmarPresenca(evento_id, status) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            <input type="hidden" name="acao" value="confirmar_presenca">
+            <input type="hidden" name="evento_id" value="${evento_id}">
+            <input type="hidden" name="status_presenca" value="${status}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    }
+    
+    function confirmarDelete(tipo, id, nome) {
+        if(tipo === 'evento') {
+            confirmarAcao({
+                titulo: 'Deletar Evento',
+                msg: `Deseja apagar o evento <b>${nome}</b>?<br><br>As presenças também serão apagadas.`,
+                icon: 'fa-solid fa-calendar-xmark',
+                iconClass: 'icon-danger',
+                btnText: 'Excluir',
+                btnClass: 'btn-danger',
+                callback: function() {
+                    let f = document.createElement('form');
+                    f.method = 'POST';
+                    f.innerHTML = `<input type="hidden" name="acao" value="delete_evento"><input type="hidden" name="id_evento" value="${id}">`;
+                    document.body.appendChild(f);
+                    f.submit();
+                }
+            });
+            return;
+        }
+    }
+    </script>
+
+
+<?php 
 // ### PÁGINA NÃO ENCONTRADA ###
 else: ?>
                 <div class="page-header">
@@ -4178,6 +4599,34 @@ else: ?>
 
             </div>
         </main>
+    </div>
+
+    <!-- Modal de Notificações Rápidas -->
+    <div class="modal-overlay" id="modalNotificacoes">
+        <div class="modal-content" style="max-width: 400px; padding: 0;">
+            <div class="modal-header" style="background: var(--primary); color: white; border-radius: 20px 20px 0 0;">
+                <h2>🔔 Notificações</h2>
+                <button class="close-modal" onclick="closeModal('modalNotificacoes')" style="color: white;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 0; max-height: 350px; overflow-y: auto;">
+                <?php if ($role !== ROLE_USER && $stats_sugestoes > 0): ?>
+                    <a href="?page=sugestoes" class="dropdown-item" style="padding: 20px; border-bottom: 1px solid var(--border);">
+                        <div style="background: rgba(110,43,58,0.1); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--primary); margin-right: 15px;">
+                            <i class="fa-solid fa-lightbulb"></i>
+                        </div>
+                        <div>
+                            <strong style="display: block; font-size: 0.9em;">Novas Sugestões</strong>
+                            <small style="color: var(--text-muted);">Você tem <?php echo $stats_sugestoes; ?> ideias pendentes.</small>
+                        </div>
+                    </a>
+                <?php else: ?>
+                    <div style="padding: 40px 20px; text-align: center; color: var(--text-muted);">
+                        <i class="fa-solid fa-bell-slash" style="font-size: 2em; opacity: 0.3; margin-bottom: 15px; display: block;"></i>
+                        <p>Nenhuma nova notificação.</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 
     <!-- Modal: Trocar Senha -->
@@ -4210,6 +4659,37 @@ else: ?>
         </div>
     </div>
 
+    <!-- Modal: Preview / Leitura Online -->
+    <div class="modal-overlay" id="modalPreview">
+        <div class="modal-content" style="max-width: 95vw; width: 1200px; height: 95vh; display: flex; flex-direction: column; overflow: hidden;">
+            <div class="modal-header" style="background: var(--bg-card); border-bottom: 1px solid var(--border);">
+                <h2 id="previewTitle" style="margin: 0; font-size: 1.2em;"><i class="fa-solid fa-eye"></i> Visualização</h2>
+                <button class="close-modal" onclick="closeModal('modalPreview')">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="flex: 1; padding: 0; overflow: hidden; background: #1a1a1a; position: relative; display: flex; align-items: center; justify-content: center;">
+                <div id="previewLoader" style="position: absolute; color: white; display: flex; flex-direction: column; align-items: center; gap: 15px; z-index: 10;">
+                    <i class="fa-solid fa-circle-notch fa-spin fa-2x"></i>
+                    <span>Carregando conteúdo...</span>
+                </div>
+                <iframe id="previewFrame" style="width: 100%; height: 100%; border: none; display: none; background: white;" onload="this.style.display='block'; document.getElementById('previewLoader').style.display='none';"></iframe>
+                <div id="previewImageContainer" style="display: none; width: 100%; height: 100%; overflow: auto; padding: 20px; text-align: center;">
+                    <img id="previewImage" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                </div>
+                <div id="previewVideoContainer" style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center;">
+                    <video id="previewVideo" controls style="max-width: 100%; max-height: 100%;"></video>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 15px 25px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <div id="previewAuthor" style="color: var(--text-muted); font-size: 0.9em; font-weight: 500;"></div>
+                <a id="previewDownload" href="#" download class="btn btn-primary" style="padding: 10px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-download"></i> Baixar Original
+                </a>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
@@ -4232,7 +4712,7 @@ else: ?>
                 <i class="fa-solid fa-lightbulb"></i>
                 <span>Ideias</span>
             </a>
-            <a href="#" class="bnav-item" onclick="toggleUserDropdown(); return false;">
+            <a href="?page=perfil" class="bnav-item <?php echo $pagina==='perfil'?'active':''; ?>">
                 <i class="fa-solid fa-circle-user"></i>
                 <span>Perfil</span>
             </a>
@@ -4274,14 +4754,18 @@ else: ?>
             
             // Atualiza ícone
             const icon = document.querySelector('.theme-btn i');
-            icon.classList.toggle('fa-moon');
-            icon.classList.toggle('fa-sun');
+            if (icon) {
+                icon.classList.toggle('fa-moon');
+                icon.classList.toggle('fa-sun');
+            }
         }
         
         // Aplica tema salvo
-        if (localStorage.getItem('theme') === 'dark') {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
-            document.querySelector('.theme-btn i').classList.replace('fa-moon', 'fa-sun');
+            const themeIcon = document.querySelector('.theme-btn i');
+            if (themeIcon) themeIcon.classList.replace('fa-moon', 'fa-sun');
         }
 
         // === SIDEBAR MOBILE ===
@@ -4305,18 +4789,42 @@ else: ?>
         });
 
         // === DROPDOWN DO USUÁRIO ===
-        function toggleUserDropdown() {
+        function toggleUserDropdown(event) {
+            if (event) event.stopPropagation();
             const dropdown = document.getElementById('user-dropdown');
-            dropdown.classList.toggle('active');
+            const backdrop = document.getElementById('dropdown-backdrop');
+            if (!dropdown) return;
+            const isOpen = dropdown.classList.contains('active');
+            if (isOpen) {
+                closeUserDropdown();
+            } else {
+                dropdown.classList.add('active');
+                if (backdrop) backdrop.style.display = 'block';
+                document.body.style.overflow = 'hidden'; // evita scroll
+            }
         }
-        
-        // Fechar dropdown clicando fora
+        function closeUserDropdown() {
+            const dropdown = document.getElementById('user-dropdown');
+            const backdrop = document.getElementById('dropdown-backdrop');
+            if (dropdown) dropdown.classList.remove('active');
+            if (backdrop) backdrop.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        // Fechar elementos ao clicar fora
         document.addEventListener('click', function(e) {
+            // Dropdown de perfil
             const dropdown = document.getElementById('user-dropdown');
             const trigger = document.querySelector('.user-trigger');
-            
-            if (dropdown && !dropdown.contains(e.target) && !trigger.contains(e.target)) {
-                dropdown.classList.remove('active');
+            if (dropdown && dropdown.classList.contains('active') &&
+                trigger && !dropdown.contains(e.target) && !trigger.contains(e.target)) {
+                closeUserDropdown();
+            }
+
+            // Fechar sidebar mobile ao clicar no overlay
+            const overlay = document.getElementById('sidebarOverlay');
+            if (e.target === overlay) {
+                closeSidebar();
             }
         });
 
@@ -4377,8 +4885,11 @@ else: ?>
 
         // === SISTEMA DE MODAIS ===
         function openModal(id) {
-            document.getElementById(id).classList.add('active');
-            document.body.style.overflow = 'hidden';
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
         }
         
         function closeModal(id) {
@@ -4628,22 +5139,24 @@ else: ?>
             });
         }
 
-        // === FILTRO DE MATERIAIS ===
-        function filtrarMateriais() {
-            const input = document.getElementById('buscaMaterial').value.toLowerCase();
-            const items = document.getElementsByClassName('material-item');
-            
-            for (let i = 0; i < items.length; i++) {
-                const titulo = items[i].querySelector('.material-titulo').innerText.toLowerCase();
-                const categoria = items[i].querySelector('.material-categoria').innerText.toLowerCase();
-                
-                if (titulo.includes(input) || categoria.includes(input)) {
-                    items[i].style.display = '';
-                } else {
-                    items[i].style.display = 'none';
-                }
-            }
-        }
+        // === KPI E BARRAS DE PROGRESSO ===
+        document.querySelectorAll('.kpi-value[data-target]').forEach(el => {
+            const target = parseInt(el.dataset.target) || 0;
+            if(target === 0) { el.textContent = '0'; return; }
+            let current = 0;
+            const step = Math.max(1, Math.floor(target / 30));
+            const timer = setInterval(() => {
+                current = Math.min(current + step, target);
+                el.textContent = current;
+                if(current >= target) clearInterval(timer);
+            }, 40);
+        });
+
+        document.querySelectorAll('.progress-bar-fill[data-width]').forEach(el => {
+            setTimeout(() => {
+                el.style.width = el.dataset.width + '%';
+            }, 300);
+        });
 
         // === EXECUTAR NOTIFICAÇÃO DO PHP ===
         <?php echo $notificacao; ?>
