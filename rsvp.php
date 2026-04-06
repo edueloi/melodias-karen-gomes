@@ -158,9 +158,9 @@ if (!empty($evento['colaborativo_ativo']) && !empty($evento['itens_colaborativos
         position: absolute; inset: 0;
         background-size: cover;
         background-position: center;
-        filter: brightness(0.55) saturate(1.2) blur(2px);
+        filter: brightness(0.4) saturate(1.2) blur(8px);
         transform: scale(1.1);
-        transition: transform 10s ease-out;
+        transition: transform 12s ease-out;
     }
     .hero:hover .hero-bg { transform: scale(1.2); }
     
@@ -233,13 +233,16 @@ if (!empty($evento['colaborativo_ativo']) && !empty($evento['itens_colaborativos
     /* ── LOGO ── */
     .hero-logo {
         position: relative;
-        height: 80px;
-        margin-bottom: 20px;
-        filter: brightness(0) invert(1) drop-shadow(0 4px 12px rgba(0,0,0,0.3));
-        transition: transform 0.3s ease;
+        height: 100px;
+        margin-bottom: 25px;
+        filter: brightness(0) invert(1) drop-shadow(0 6px 15px rgba(0,0,0,0.4));
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         opacity: 1;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
     }
-    .hero-logo:hover { transform: scale(1.05); }
+    .hero-logo:hover { transform: scale(1.1); }
 
     /* ── CARD ── */
     .card-wrap {
@@ -256,16 +259,6 @@ if (!empty($evento['colaborativo_ativo']) && !empty($evento['itens_colaborativos
         box-shadow: var(--shadow);
         overflow: hidden;
         border: 1px solid var(--border);
-    }
-
-    /* ── EVENT IMAGE ── */
-    .event-img {
-        width: 100%;
-        max-height: 450px;
-        object-fit: contain;
-        background: #fdfdfd;
-        display: block;
-        border-bottom: 1px solid var(--border);
     }
 
     /* ── DESCRIPTION banner ── */
@@ -599,7 +592,10 @@ if (!empty($evento['colaborativo_ativo']) && !empty($evento['itens_colaborativos
 
             <!-- ── IMAGE if exists ── -->
             <?php if ($has_capa): ?>
-            <img src="<?= $capa_url ?>" alt="Imagem do evento <?= $titulo ?>" class="event-img" loading="lazy">
+            <div style="width: 100%; min-height: 200px; max-height: 450px; overflow: hidden; position: relative; background: #000; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border);">
+                <img src="<?= $capa_url ?>" alt="Imagem do evento <?= $titulo ?>" style="width: 100%; height: 100%; object-fit: contain; position: relative; z-index: 2;" loading="lazy">
+                <div style="position: absolute; inset: 0; background-image: url('<?= $capa_url ?>'); background-size: cover; background-position: center; filter: blur(25px) brightness(0.4); opacity: 0.8; transform: scale(1.3);"></div>
+            </div>
             <?php endif; ?>
 
             <!-- ── DESCRIPTION ── -->

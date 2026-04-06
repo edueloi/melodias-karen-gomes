@@ -72,21 +72,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cadastro - Melodias</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.mi    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #6e2b3a;
-            --primary-hover: #4a1d27;
-            --bg: #f8fafc;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-            --radius: 16px;
+            --primary-hover: #521f2b;
+            --bg: #f8f4f5;
+            --text-main: #1a0d10;
+            --text-muted: #6b5057;
+            --border: #e8dde0;
+            --radius: 20px;
+            --shadow: 0 20px 50px rgba(110,43,58,0.1);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: 'Inter', sans-serif; 
+            font-family: 'Outfit', sans-serif; 
             background: var(--bg); 
             color: var(--text-main);
             display: flex;
@@ -94,31 +94,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
             justify-content: center;
             min-height: 100vh;
             padding: 20px;
+            opacity: 0;
+            animation: fadeIn 0.8s ease forwards;
         }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
         .reg-card {
             background: white;
             width: 100%;
             max-width: 480px;
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            border-radius: 30px;
+            box-shadow: var(--shadow);
             overflow: hidden;
-            animation: fadeIn 0.6s ease;
+            border: 1px solid var(--border);
         }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         
         .header {
-            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-            padding: 40px 30px;
+            background: linear-gradient(135deg, var(--primary), #9d405a);
+            padding: 50px 30px;
             text-align: center;
             color: white;
+            position: relative;
+            overflow: hidden;
         }
-        .header h1 { font-size: 1.8em; font-weight: 800; margin-bottom: 10px; }
-        .header p { opacity: 0.8; font-size: 0.95em; }
+        .header::before {
+            content: '';
+            position: absolute;
+            width: 200px; height: 200px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
+            top: -50px; right: -50px;
+        }
+        .header h1 { 
+            font-size: 2.2em; 
+            font-weight: 900; 
+            margin-bottom: 8px; 
+            letter-spacing: -0.5px;
+        }
+        .header p { opacity: 0.9; font-size: 1em; font-weight: 500; }
         
-        .body { padding: 40px 30px; }
+        .body { padding: 40px 35px; }
         
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; font-weight: 700; font-size: 0.85em; margin-bottom: 8px; color: var(--text-main); }
+        .form-group { margin-bottom: 22px; }
+        .form-group label { 
+            display: block; 
+            font-weight: 700; 
+            font-size: 0.85em; 
+            margin-bottom: 8px; 
+            color: var(--text-main);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
         .input-control {
             width: 100%;
             padding: 14px 18px;
@@ -128,45 +154,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
             font-size: 1em;
             transition: all 0.2s;
             outline: none;
+            background: #fdfdfd;
         }
-        .input-control:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(110,43,58,0.1); }
+        .input-control:focus { 
+            border-color: var(--primary); 
+            box-shadow: 0 0 0 4px rgba(110,43,58,0.1); 
+            background: white;
+        }
         
         .btn {
             width: 100%;
-            padding: 16px;
-            border-radius: 14px;
+            padding: 18px;
+            border-radius: 16px;
             border: none;
             background: var(--primary);
             color: white;
-            font-size: 1em;
+            font-size: 1.05em;
             font-weight: 800;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            box-shadow: 0 10px 20px rgba(110,43,58,0.2);
+            box-shadow: 0 8px 25px rgba(110,43,58,0.25);
+            text-decoration: none;
         }
-        .btn:hover { background: var(--primary-hover); transform: translateY(-2px); }
+        .btn:hover { 
+            background: var(--primary-hover); 
+            transform: translateY(-3px); 
+            box-shadow: 0 12px 30px rgba(110,43,58,0.35);
+        }
         .btn:active { transform: translateY(0); }
-
+ 
         .alert {
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 25px;
+            padding: 16px 20px;
+            border-radius: 14px;
+            margin-bottom: 30px;
             font-size: 0.9em;
-            font-weight: 500;
+            font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            border-left: 5px solid transparent;
         }
-        .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-        .alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-error { 
+            background: #fef2f2; 
+            color: #991b1b; 
+            border-color: #ef4444; 
+        }
+        .alert-success { 
+            background: #f0fdf4; 
+            color: #166534; 
+            border-color: #22c55e;
+        }
         
-        .success-area { text-align: center; padding: 20px 0; }
-        .success-area i { font-size: 4em; color: #10b981; margin-bottom: 20px; }
+        .success-area { text-align: center; padding: 10px 0; }
+        .success-area i { 
+            font-size: 4.5em; 
+            color: #22c55e; 
+            margin-bottom: 20px;
+            filter: drop-shadow(0 4px 10px rgba(34, 197, 94, 0.2));
+        }
+        .success-area h2 { font-weight: 900; font-size: 1.8em; margin-bottom: 10px; }
+        
+        a { color: var(--primary); font-weight: 700; text-decoration: none; transition: color 0.2s; }
+        a:hover { color: var(--primary-hover); text-decoration: underline; }
     </style>
+/style>
 </head>
 <body>
 

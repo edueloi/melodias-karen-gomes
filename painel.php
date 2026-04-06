@@ -4550,9 +4550,10 @@ elseif ($pagina === 'eventos'):
         <?php if(count($eventos) > 0): foreach($eventos as $ev): ?>
             <div class="card event-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.3s ease;">
                 <?php if(!empty($ev['capa']) && file_exists($ev['capa'])): ?>
-                    <div style="width: 100%; height: 180px; overflow: hidden; position: relative; background: var(--bg-body);">
-                        <img src="<?php echo htmlspecialchars($ev['capa']); ?>" style="width: 100%; height: 100%; object-fit: cover;" alt="Capa do Evento">
-                        <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%);"></div>
+                    <div style="width: 100%; min-height: 200px; max-height: 280px; overflow: hidden; position: relative; background: #000; display: flex; align-items: center; justify-content: center;">
+                        <img src="<?php echo htmlspecialchars($ev['capa']); ?>" style="width: 100%; height: 100%; object-fit: contain; position: relative; z-index: 2;" alt="Capa do Evento">
+                        <div style="position: absolute; inset: 0; background-image: url('<?php echo htmlspecialchars($ev['capa']); ?>'); background-size: cover; background-position: center; filter: blur(20px) brightness(0.4); opacity: 0.7; transform: scale(1.2);"></div>
+                        <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%); z-index: 3;"></div>
                     </div>
                 <?php endif; ?>
                 <div style="background: <?php echo empty($ev['capa']) ? 'linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%)' : 'rgba(255,255,255,0.05)'; ?>; padding: <?php echo empty($ev['capa']) ? '20px' : '15px 20px 20px 20px'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-main)'; ?>; position: relative; border-bottom: <?php echo empty($ev['capa']) ? 'none' : '1px solid var(--border)'; ?>;">
