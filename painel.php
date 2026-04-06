@@ -53,6 +53,10 @@ try {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             titulo TEXT NOT NULL, descricao TEXT, data_evento DATETIME,
             local TEXT, mapa_link TEXT, created_by INTEGER,
+            rsvp_ativo INTEGER DEFAULT 1,
+            permite_acompanhantes INTEGER DEFAULT 0,
+            colaborativo_ativo INTEGER DEFAULT 0,
+            itens_colaborativos TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
@@ -60,8 +64,16 @@ try {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             evento_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
             status TEXT DEFAULT 'confirmado',
+            acompanhantes INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(evento_id, user_id)
+        )");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS eventos_contribuicoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            evento_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
+            item_nome TEXT NOT NULL,
+            quantidade TEXT, 
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
         $pdo->exec("CREATE TABLE IF NOT EXISTS configuracoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,6 +110,22 @@ try {
             "ALTER TABLE materiais ADD COLUMN created_by INTEGER",
             "ALTER TABLE materiais ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP",
             "ALTER TABLE materiais ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+            "ALTER TABLE eventos ADD COLUMN rsvp_ativo INTEGER DEFAULT 1",
+            "ALTER TABLE eventos ADD COLUMN permite_acompanhantes INTEGER DEFAULT 0",
+            "ALTER TABLE eventos ADD COLUMN colaborativo_ativo INTEGER DEFAULT 0",
+            "ALTER TABLE eventos ADD COLUMN itens_colaborativos TEXT",
+            "ALTER TABLE eventos_presenca ADD COLUMN acompanhantes INTEGER DEFAULT 0",
+            "ALTER TABLE eventos ADD COLUMN capa TEXT",
+            "CREATE TABLE IF NOT EXISTS eventos_presenca_externa (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                evento_id INTEGER NOT NULL,
+                nome TEXT NOT NULL,
+                whatsapp TEXT,
+                status TEXT DEFAULT 'confirmado',
+                acompanhantes INTEGER DEFAULT 0,
+                contribuicao_item TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
         ];
         foreach ($alter as $sql) { try { $pdo->exec($sql); } catch(Exception $e){} }
     }
@@ -163,6 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($acao === 'confirmar_presenca') {
         $evento_id = $_POST['evento_id'];
         $status = $_POST['status_presenca'] ?? 'confirmado'; // 'confirmado' ou 'recusado'
+        $acompanhantes = (int)($_POST['acompanhantes'] ?? 0);
         
         $stmt = $pdo->prepare("SELECT id FROM eventos_presenca WHERE evento_id = ? AND user_id = ?");
         $stmt->execute([$evento_id, $id_usuario]);
@@ -170,18 +199,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->fetch()) {
             if($status === 'remover') {
                 $pdo->prepare("DELETE FROM eventos_presenca WHERE evento_id = ? AND user_id = ?")->execute([$evento_id, $id_usuario]);
+                // Remove contribuições se desistir do evento
+                $pdo->prepare("DELETE FROM eventos_contribuicoes WHERE evento_id = ? AND user_id = ?")->execute([$evento_id, $id_usuario]);
                 $notificacao = "showToast('Cancelado', 'Sua presença foi cancelada', 'info');";
             } else {
-                $pdo->prepare("UPDATE eventos_presenca SET status = ? WHERE evento_id = ? AND user_id = ?")->execute([$status, $evento_id, $id_usuario]);
+                $pdo->prepare("UPDATE eventos_presenca SET status = ?, acompanhantes = ? WHERE evento_id = ? AND user_id = ?")->execute([$status, $acompanhantes, $evento_id, $id_usuario]);
                 $msg = $status === 'confirmado' ? 'Presença confirmada!' : 'Você marcou que não irá.';
                 $notificacao = "showToast('Atualizado', '{$msg}', 'success');";
             }
         } else {
             if($status !== 'remover') {
-                $pdo->prepare("INSERT INTO eventos_presenca (evento_id, user_id, status) VALUES (?, ?, ?)")->execute([$evento_id, $id_usuario, $status]);
+                $pdo->prepare("INSERT INTO eventos_presenca (evento_id, user_id, status, acompanhantes) VALUES (?, ?, ?, ?)")->execute([$evento_id, $id_usuario, $status, $acompanhantes]);
                 $msg = $status === 'confirmado' ? 'Você confirmou sua presença!' : 'Você marcou que não irá.';
                 $notificacao = "showToast('Confirmado', '{$msg}', 'success');";
             }
+        }
+    }
+
+    if ($acao === 'gerenciar_contribuicao') {
+        $evento_id = $_POST['evento_id'];
+        $item_nome = sanitize($_POST['item_nome']);
+        $operacao = $_POST['operacao']; // 'adicionar' ou 'remover'
+
+        if ($operacao === 'adicionar') {
+            $stmt = $pdo->prepare("INSERT INTO eventos_contribuicoes (evento_id, user_id, item_nome) VALUES (?, ?, ?)");
+            $stmt->execute([$evento_id, $id_usuario, $item_nome]);
+            $notificacao = "showToast('Adicionado', 'Você assumiu: {$item_nome}', 'success');";
+        } else {
+            $stmt = $pdo->prepare("DELETE FROM eventos_contribuicoes WHERE evento_id = ? AND user_id = ? AND item_nome = ?");
+            $stmt->execute([$evento_id, $id_usuario, $item_nome]);
+            $notificacao = "showToast('Removido', 'Contribuição removida', 'info');";
         }
     }
     
@@ -394,14 +441,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $local = sanitize($_POST['local']);
             $mapa_link = sanitize($_POST['mapa_link'] ?? '');
             
-            $stmt = $pdo->prepare("INSERT INTO eventos (titulo, descricao, data_evento, local, mapa_link, created_by) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$titulo, $descricao, $data_evento, $local, $mapa_link, $id_usuario]);
+            // Novos campos
+            $rsvp_ativo = isset($_POST['rsvp_ativo']) ? 1 : 0;
+            $permite_acompanhantes = isset($_POST['permite_acompanhantes']) ? 1 : 0;
+            $colaborativo_ativo = isset($_POST['colaborativo_ativo']) ? 1 : 0;
+            $itens_colaborativos = sanitize($_POST['itens_colaborativos'] ?? '');
+            
+            // Upload Foto Evento
+            $capa = '';
+            if (!empty($_FILES['capa']['name'])) {
+                if (!is_dir('uploads/eventos')) mkdir('uploads/eventos', 0755, true);
+                $ext = pathinfo($_FILES['capa']['name'], PATHINFO_EXTENSION);
+                $capa = 'uploads/eventos/' . time() . '_' . rand(100,999) . '.' . $ext;
+                move_uploaded_file($_FILES['capa']['tmp_name'], $capa);
+            }
+            
+            $stmt = $pdo->prepare("INSERT INTO eventos (titulo, descricao, data_evento, local, mapa_link, rsvp_ativo, permite_acompanhantes, colaborativo_ativo, itens_colaborativos, capa, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$titulo, $descricao, $data_evento, $local, $mapa_link, $rsvp_ativo, $permite_acompanhantes, $colaborativo_ativo, $itens_colaborativos, $capa, $id_usuario]);
             $notificacao = "showToast('Sucesso', 'Evento criado com sucesso!', 'success');";
+        }
+
+        if ($acao === 'edit_evento') {
+            $id_ev = $_POST['id_evento'];
+            $titulo = sanitize($_POST['titulo']);
+            $descricao = sanitize($_POST['descricao']);
+            $data_evento = $_POST['data_evento'];
+            $local = sanitize($_POST['local']);
+            $mapa_link = sanitize($_POST['mapa_link'] ?? '');
+            
+            // Novos campos
+            $rsvp_ativo = isset($_POST['rsvp_ativo']) ? 1 : 0;
+            $permite_acompanhantes = isset($_POST['permite_acompanhantes']) ? 1 : 0;
+            $colaborativo_ativo = isset($_POST['colaborativo_ativo']) ? 1 : 0;
+            $itens_colaborativos = sanitize($_POST['itens_colaborativos'] ?? '');
+            
+            $update_capa_sql = "";
+            $params = [$titulo, $descricao, $data_evento, $local, $mapa_link, $rsvp_ativo, $permite_acompanhantes, $colaborativo_ativo, $itens_colaborativos];
+            
+            if (!empty($_FILES['capa']['name'])) {
+                if (!is_dir('uploads/eventos')) mkdir('uploads/eventos', 0755, true);
+                $ext = pathinfo($_FILES['capa']['name'], PATHINFO_EXTENSION);
+                $capa = 'uploads/eventos/' . time() . '_' . rand(100,999) . '.' . $ext;
+                
+                // Remove antiga se existir
+                $st_search = $pdo->prepare("SELECT capa FROM eventos WHERE id = ?");
+                $st_search->execute([$id_ev]);
+                if($ev_old = $st_search->fetch()) {
+                    if(!empty($ev_old['capa']) && file_exists($ev_old['capa'])) @unlink($ev_old['capa']);
+                }
+                
+                move_uploaded_file($_FILES['capa']['tmp_name'], $capa);
+                $update_capa_sql = ", capa = ?";
+                $params[] = $capa;
+            }
+            
+            $params[] = $id_ev;
+            
+            $stmt = $pdo->prepare("UPDATE eventos SET titulo = ?, descricao = ?, data_evento = ?, local = ?, mapa_link = ?, rsvp_ativo = ?, permite_acompanhantes = ?, colaborativo_ativo = ?, itens_colaborativos = ?{$update_capa_sql} WHERE id = ?");
+            $stmt->execute($params);
+            $notificacao = "showToast('Sucedido', 'Evento atualizado!', 'success');";
         }
 
         if ($acao === 'delete_evento') {
             $id_evento = $_POST['id_evento'];
             $pdo->prepare("DELETE FROM eventos_presenca WHERE evento_id = ?")->execute([$id_evento]);
+            $pdo->prepare("DELETE FROM eventos_contribuicoes WHERE evento_id = ?")->execute([$id_evento]);
             $pdo->prepare("DELETE FROM eventos WHERE id = ?")->execute([$id_evento]);
             $notificacao = "showToast('Excluído', 'Evento removido com sucesso!', 'error');";
         }
@@ -978,7 +1082,7 @@ $banco_desatualizado = false;
             display: flex; justify-content: space-between; align-items: center; 
             padding: 12px 28px; background: var(--bg-card); 
             border-bottom: 1px solid var(--border); position: sticky; 
-            top: 0; z-index: 90;
+            top: 0; z-index: 900;
             box-shadow: 0 1px 0 var(--border), 0 4px 20px rgba(0,0,0,0.04);
             backdrop-filter: blur(10px);
         }
@@ -1032,9 +1136,9 @@ $banco_desatualizado = false;
         .user-dropdown { position: relative; }
         .user-trigger {
             display: flex; align-items: center; gap: 10px;
-            cursor: pointer; padding: 6px 10px; border-radius: 12px;
+            cursor: pointer; padding: 6px 12px; border-radius: 12px;
             transition: var(--transition); background: var(--bg-body);
-            border: 1.5px solid var(--border);
+            border: 1.5px solid var(--border); min-height: 44px;
         }
         .user-trigger:hover { background: rgba(110,43,58,0.05); border-color: var(--primary); }
         .user-info { text-align: right; }
@@ -1066,7 +1170,7 @@ $banco_desatualizado = false;
         .dropdown-header strong { display: block; color: var(--text-main); margin-bottom: 2px; font-size: 0.88em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
         .dropdown-header small { color: var(--text-muted); font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 200px; }
         /* Overlay que fecha o dropdown ao clicar fora (mobile) */
-        .dropdown-backdrop { display: none; position: fixed; inset: 0; z-index: 899; }
+        .dropdown-backdrop { display: none; position: fixed; inset: 0; z-index: 850; background: rgba(0,0,0,0.02); }
         .dropdown-item {
             padding: 11px 18px; display: flex; align-items: center;
             gap: 10px; color: var(--text-main); text-decoration: none;
@@ -1085,27 +1189,19 @@ $banco_desatualizado = false;
         .theme-btn:hover { border-color: var(--primary); transform: rotate(20deg); color: var(--primary); background: rgba(110,43,58,0.05); }
         .mobile-toggle { display: none; margin-right: 15px; }
 
-        @media (max-width: 1024px) {
-            .mobile-toggle { display: flex; }
-            .sidebar { transform: translateX(-100%); width: 280px; box-shadow: 20px 0 50px rgba(0,0,0,0.2); }
-            .sidebar.show { transform: translateX(0); }
-            .main-content { margin-left: 0; }
-            .topbar { left: 0; width: 100%; }
-        }
         .mobile-toggle:hover { border-color: var(--primary); color: var(--primary); }
         
         /* Overlay Mobile */
         .sidebar-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4);
             z-index: 998;
             opacity: 0;
             transition: opacity 0.3s ease;
+            backdrop-filter: blur(2px);
         }
         .sidebar-overlay.active {
             display: block;
@@ -1239,17 +1335,37 @@ $banco_desatualizado = false;
             display: block; margin-bottom: 8px; color: var(--text-main); 
             font-size: 0.85em; font-weight: 600; 
         }
-        .input-control, select, textarea { 
-            width: 100%; padding: 12px 15px; border-radius: 8px; 
+        .input-control, select, textarea, .premium-input { 
+            width: 100%; padding: 12px 15px; border-radius: 10px; 
             border: 1.5px solid var(--border); background: var(--bg-body); 
             color: var(--text-main); transition: var(--transition); 
             font-family: inherit; font-size: 0.9em;
         }
-        .input-control:focus, select:focus, textarea:focus { 
+        .input-control:focus, select:focus, textarea:focus, .premium-input:focus { 
             outline: none; border-color: var(--primary); 
             box-shadow: 0 0 0 3px rgba(110, 43, 58, 0.1); 
+            background: var(--bg-card);
         }
-        textarea { resize: vertical; min-height: 100px; }
+        textarea { resize: vertical; min-height: 80px; }
+        .premium-input {
+            background: rgba(110,43,58,0.02);
+            border-color: rgba(110,43,58,0.1);
+        }
+        .premium-input:focus {
+            background: #fff;
+            border-color: var(--primary);
+        }
+        
+        /* Input Password Wrapper */
+        .input-password-wrapper { position: relative; display: flex; align-items: center; }
+        .input-password-wrapper .input-control { padding-right: 45px; }
+        .btn-toggle-password {
+            position: absolute; right: 10px; background: none; border: none;
+            color: var(--text-muted); cursor: pointer; padding: 6px;
+            display: flex; align-items: center; justify-content: center;
+            transition: var(--transition); z-index: 5;
+        }
+        .btn-toggle-password:hover { color: var(--primary); }
         
         .badge { 
             padding: 5px 12px; border-radius: 20px; 
@@ -1299,6 +1415,12 @@ $banco_desatualizado = false;
             padding: 16px 24px; border-top: 1px solid var(--border);
             display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0;
             flex-wrap: wrap;
+        }
+        .form-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px;
+        }
+        @media (max-width: 600px) {
+            .form-grid { grid-template-columns: 1fr; }
         }
 
         /* ========== TOASTS ========== */
@@ -1498,9 +1620,11 @@ $banco_desatualizado = false;
 
         /* ========== RESPONSIVO TABLET (1024px) ========== */
         @media (max-width: 1024px) {
-            .sidebar { transform: translateX(-100%); width: 280px; }
-            .sidebar.active { transform: translateX(0); }
+            .mobile-toggle { display: flex; }
+            .sidebar { transform: translateX(-100%); width: 280px; z-index: 1100; }
+            .sidebar.show { transform: translateX(0); }
             .main-content { margin-left: 0; }
+            .topbar { left: 0; width: 100%; position: sticky; top: 0; z-index: 900; }
 
             /* Page Header */
             .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
@@ -1517,7 +1641,10 @@ $banco_desatualizado = false;
                 position: fixed; top: 68px; right: 15px;
                 width: 260px; max-width: calc(100vw - 30px);
                 border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+                z-index: 1200;
+                display: none;
             }
+            .user-dropdown .dropdown-menu.active { display: block; }
         }
 
         /* ========== RESPONSIVO MOBILE (<768px) ========== */
@@ -3075,8 +3202,8 @@ elseif ($pagina === 'ver_perfil'):
 
         @media (max-width: 900px) {
             .profile-public-content { grid-template-columns: 1fr; }
-            .profile-public-sidebar { order: 2; }
-            .profile-public-main { order: 1; }
+            .profile-public-sidebar { order: 1; }
+            .profile-public-main { order: 2; }
             .profile-public-header { height: 150px; }
             .public-nome { font-size: 1.4em; }
         }
@@ -3856,8 +3983,13 @@ elseif ($pagina === 'usuarios'):
                                 </div>
                                 <div class="input-group">
                                     <label>Senha *</label>
-                                    <input type="password" name="senha" class="input-control" required 
-                                           placeholder="Mínimo 6 caracteres" minlength="6">
+                                    <div class="input-password-wrapper">
+                                        <input type="password" name="senha" id="create_user_pass" class="input-control" required 
+                                               placeholder="Mínimo 6 caracteres" minlength="6">
+                                        <button type="button" class="btn-toggle-password" onclick="togglePassword(this, 'create_user_pass')">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="input-group">
                                     <label>Especialidade</label>
@@ -3922,8 +4054,13 @@ elseif ($pagina === 'usuarios'):
                                 </div>
                                 <div class="input-group">
                                     <label>Nova Senha (deixe vazio para manter a atual)</label>
-                                    <input type="password" name="nova_senha" class="input-control" 
-                                           placeholder="Digite apenas se quiser alterar" minlength="6">
+                                    <div class="input-password-wrapper">
+                                        <input type="password" name="nova_senha" id="edit_user_pass" class="input-control" 
+                                               placeholder="Digite apenas se quiser alterar" minlength="6">
+                                        <button type="button" class="btn-toggle-password" onclick="togglePassword(this, 'edit_user_pass')">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="input-group">
                                     <label>Especialidade</label>
@@ -4369,43 +4506,6 @@ function abrirEditarComentario(id, texto) {
     <h3>Nenhum tópico encontrado para esta busca</h3>
 </div>
 
-<!-- Modal Novo Tópico — CORRIGIDO name="acao" -->
-<div class="modal-overlay" id="modalNovoPost">
-    <div class="modal-content" style="max-width:640px;">
-        <div class="modal-header">
-            <h2>✍️ Criar Novo Tópico</h2>
-            <button class="close-modal" onclick="closeModal('modalNovoPost')"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="modal-body">
-            <form method="POST" action="">
-                <input type="hidden" name="acao" value="criar_post_forum">
-                <div class="input-group">
-                    <label>Título do Tópico *</label>
-                    <input type="text" name="titulo" class="input-control" required maxlength="200" placeholder="Ex: Dúvida sobre abordagem terapêutica...">
-                </div>
-                <div class="input-group">
-                    <label>Categoria *</label>
-                    <select name="categoria" class="input-control" required>
-                        <option value="">Selecione uma categoria...</option>
-                        <option value="duvidas">❓ Dúvidas</option>
-                        <option value="discussao">💭 Discussão</option>
-                        <option value="recursos">📚 Recursos</option>
-                        <option value="anuncios">📢 Anúncios</option>
-                        <option value="geral">💬 Geral</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>Conteúdo *</label>
-                    <textarea name="conteudo" class="input-control" required rows="7" placeholder="Descreva sua dúvida, compartilhe seu conhecimento..."></textarea>
-                </div>
-                <div style="display:flex;gap:10px;justify-content:flex-end;">
-                    <button type="button" class="btn btn-outline" onclick="closeModal('modalNovoPost')">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Publicar Tópico</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <script>
 function filtrarForum(query) {
@@ -4460,15 +4560,32 @@ elseif ($pagina === 'eventos'):
 
     <div class="grid-cards" style="margin-top: 25px;">
         <?php if(count($eventos) > 0): foreach($eventos as $ev): ?>
-            <div class="card event-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
-                <div style="background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%); padding: 20px; color: white; position: relative;">
-                    <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $role === ROLE_EDITOR): ?>
-                    <button onclick="confirmarDelete('evento', <?php echo $ev['id']; ?>, '<?php echo addslashes($ev['titulo']); ?>')" class="btn btn-danger btn-sm" style="position: absolute; top: 15px; right: 15px; border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(239, 68, 68, 0.8);" title="Excluir Evento">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                    <?php endif; ?>
-                    <h3 style="margin: 0; font-size: 1.3em; font-weight: 800; padding-right: 30px;"><?php echo htmlspecialchars($ev['titulo']); ?></h3>
-                    <div style="font-size: 0.85em; margin-top: 10px; opacity: 0.9; display: flex; gap: 15px; flex-wrap: wrap;">
+            <div class="card event-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.3s ease;">
+                <?php if(!empty($ev['capa']) && file_exists($ev['capa'])): ?>
+                    <div style="width: 100%; height: 180px; overflow: hidden; position: relative; background: var(--bg-body);">
+                        <img src="<?php echo htmlspecialchars($ev['capa']); ?>" style="width: 100%; height: 100%; object-fit: cover;" alt="Capa do Evento">
+                        <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%);"></div>
+                    </div>
+                <?php endif; ?>
+                <div style="background: <?php echo empty($ev['capa']) ? 'linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%)' : 'rgba(255,255,255,0.05)'; ?>; padding: <?php echo empty($ev['capa']) ? '20px' : '15px 20px 20px 20px'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-main)'; ?>; position: relative; border-bottom: <?php echo empty($ev['capa']) ? 'none' : '1px solid var(--border)'; ?>;">
+                    <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 8px;">
+                        <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $role === ROLE_EDITOR): ?>
+                        <button onclick='abrirEditarEvento(<?php echo json_encode($ev); ?>)' class="btn btn-sm" style="border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: <?php echo empty($ev['capa']) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.05)'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-muted)'; ?>;" title="Editar Evento">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick='abrirRelatorio(<?php echo $ev['id']; ?>)' class="btn btn-sm" style="border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: <?php echo empty($ev['capa']) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.05)'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-muted)'; ?>;" title="Ver Relatório">
+                            <i class="fa-solid fa-chart-pie"></i>
+                        </button>
+                        <button onclick='copiarLinkPublico(<?php echo $ev['id']; ?>)' class="btn btn-sm" style="border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: <?php echo empty($ev['capa']) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.05)'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-muted)'; ?>;" title="Copiar Link Público">
+                            <i class="fa-solid fa-link"></i>
+                        </button>
+                        <button onclick="confirmarDelete('evento', <?php echo $ev['id']; ?>, '<?php echo addslashes($ev['titulo']); ?>')" class="btn btn-danger btn-sm" style="border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(239, 68, 68, 0.8);" title="Excluir Evento">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                    <h3 style="margin: 0; font-size: 1.3em; font-weight: 800; padding-right: 120px; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--primary)'; ?>;"><?php echo htmlspecialchars($ev['titulo']); ?></h3>
+                    <div style="font-size: 0.85em; margin-top: 10px; opacity: 0.9; display: flex; gap: 15px; flex-wrap: wrap; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-muted)'; ?>;">
                         <span style="display: flex; align-items: center; gap: 5px;"><i class="fa-regular fa-calendar"></i> <?php echo date('d/m/Y \à\s H:i', strtotime($ev['data_evento'])); ?></span>
                         <?php if(!empty($ev['local'])): ?>
                             <span style="display: flex; align-items: center; gap: 5px;"><i class="fa-solid fa-location-dot"></i> <?php echo htmlspecialchars($ev['local']); ?></span>
@@ -4479,77 +4596,159 @@ elseif ($pagina === 'eventos'):
                     <p style="font-size: 0.9em; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; flex: 1; white-space: pre-wrap;"><?php echo htmlspecialchars($ev['descricao'] ?? ''); ?></p>
                     
                     <?php 
-                        $presencas_total = $pdo->query("SELECT COUNT(*) FROM eventos_presenca WHERE evento_id = {$ev['id']} AND status = 'confirmado'")->fetchColumn();
-                        $status_user = $presencas_user[$ev['id']] ?? null;
+                        // Totais
+                        $stmt_total = $pdo->prepare("SELECT COUNT(*) as total, SUM(acompanhantes) as extras FROM eventos_presenca WHERE evento_id = ? AND status = 'confirmado'");
+                        $stmt_total->execute([$ev['id']]);
+                        $totais = $stmt_total->fetch();
+                        $presencas_total = (int)$totais['total'];
+                        $pessoas_total = $presencas_total + (int)$totais['extras'];
+                        
+                        $status_user_row = $pdo->prepare("SELECT status, acompanhantes FROM eventos_presenca WHERE evento_id = ? AND user_id = ?");
+                        $status_user_row->execute([$ev['id'], $id_usuario]);
+                        $meu_status = $status_user_row->fetch();
+                        $status_user = $meu_status['status'] ?? null;
+                        $meus_acompanhantes = $meu_status['acompanhantes'] ?? 0;
                     ?>
                     
-                    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 15px; margin-bottom: 15px;">
-                        <span style="font-size: 0.85em; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 5px;"><i class="fa-solid fa-users"></i> <?php echo $presencas_total; ?> confirmados</span>
-                        <?php if(!empty($ev['mapa_link'])): ?>
-                            <a href="<?php echo htmlspecialchars($ev['mapa_link'] ?? ''); ?>" target="_blank" class="btn btn-outline btn-sm" style="font-size: 0.8em; border-radius: 20px; color: var(--info); border-color: #dbeafe; padding: 4px 10px;"><i class="fa-solid fa-map"></i> Ver Mapa</a>
-                        <?php endif; ?>
+                    <!-- Widgets de Estatísticas Rápidas -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 120px; background: rgba(110,43,58,0.05); padding: 10px; border-radius: 10px; text-align: center; border: 1px solid rgba(110,43,58,0.1);">
+                            <span style="display: block; font-size: 0.7em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">Confirmados</span>
+                            <span style="font-size: 1.2em; font-weight: 800; color: var(--primary);"><?php echo $presencas_total; ?></span>
+                        </div>
+                        <div style="flex: 1; min-width: 120px; background: rgba(16,185,129,0.05); padding: 10px; border-radius: 10px; text-align: center; border: 1px solid rgba(16,185,129,0.1);">
+                            <span style="display: block; font-size: 0.7em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">Total Pessoas</span>
+                            <span style="font-size: 1.2em; font-weight: 800; color: #10b981;"><?php echo $pessoas_total; ?></span>
+                        </div>
                     </div>
+
+                    <?php if($ev['colaborativo_ativo']): ?>
+                        <div style="margin-bottom: 20px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 15px;">
+                            <h4 style="font-size: 0.85em; color: #92400e; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-mug-hot"></i> Contribuições para o Evento</h4>
+                            
+                            <?php 
+                                $itens = array_filter(array_map('trim', explode(',', $ev['itens_colaborativos'])));
+                                $contribuicoes = $pdo->prepare("SELECT ec.*, p.nome FROM eventos_contribuicoes ec JOIN profissionais p ON ec.user_id = p.id WHERE ec.evento_id = ?");
+                                $contribuicoes->execute([$ev['id']]);
+                                $lista_contribuicoes = $contribuicoes->fetchAll();
+                                
+                                $meus_itens = [];
+                                $distribuicao = [];
+                                foreach($lista_contribuicoes as $ct) {
+                                    $distribuicao[$ct['item_nome']][] = explode(' ', $ct['nome'])[0];
+                                    if($ct['user_id'] == $id_usuario) $meus_itens[] = $ct['item_nome'];
+                                }
+                            ?>
+
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <?php foreach($itens as $it): 
+                                    $estou_levando = in_array($it, $meus_itens);
+                                    $quem_leva = $distribuicao[$it] ?? [];
+                                ?>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85em;">
+                                        <div style="display: flex; flex-direction: column;">
+                                            <span style="font-weight: 700; color: #451a03;"><?php echo htmlspecialchars($it); ?></span>
+                                            <span style="font-size: 0.8em; color: #92400e;">
+                                                <?php echo empty($quem_leva) ? '<i>Ninguém ainda</i>' : implode(', ', $quem_leva); ?>
+                                            </span>
+                                        </div>
+                                        <?php if($status_user === 'confirmado'): ?>
+                                            <button onclick="toggleContribuicao(<?php echo $ev['id']; ?>, '<?php echo addslashes($it); ?>', '<?php echo $estou_levando ? 'remover' : 'adicionar'; ?>')" 
+                                                    class="btn btn-sm <?php echo $estou_levando ? 'btn-success' : 'btn-outline'; ?>" 
+                                                    style="padding: 4px 10px; border-radius: 20px; font-size: 0.8em;">
+                                                <?php echo $estou_levando ? '<i class="fa-solid fa-check"></i> Vou levar' : '+ Levar'; ?>
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <?php if($status_user === 'confirmado'): ?>
-                            <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'remover')" class="btn btn-success" style="opacity: 0.9; cursor: pointer; grid-column: 1 / -1; border-radius: 8px;"><i class="fa-solid fa-check-double"></i> Presença Confirmada (Desfazer)</button>
+                    <div style="margin-top: auto;">
+                        <?php if($ev['rsvp_ativo']): ?>
+                            <?php if($status_user === 'confirmado'): ?>
+                                <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); border-radius: 12px; padding: 15px; margin-bottom: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 10px; color: #065f46; font-weight: 700; font-size: 0.9em; margin-bottom: 10px;">
+                                        <i class="fa-solid fa-circle-check"></i> Presença Confirmada!
+                                    </div>
+                                    
+                                    <?php if($ev['permite_acompanhantes']): ?>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85em; color: #065f46;">
+                                            <span>Acompanhantes:</span>
+                                            <div style="display: flex; align-items: center; gap: 10px;">
+                                                <button onclick="updateAcompanhantes(<?php echo $ev['id']; ?>, <?php echo max(0, $meus_acompanhantes - 1); ?>)" class="btn-icon" style="background: white; border: 1px solid #10b981; color: #10b981; width: 24px; height: 24px; border-radius: 4px; cursor: pointer;">-</button>
+                                                <strong style="min-width: 20px; text-align: center;"><?php echo $meus_acompanhantes; ?></strong>
+                                                <button onclick="updateAcompanhantes(<?php echo $ev['id']; ?>, <?php echo $meus_acompanhantes + 1; ?>)" class="btn-icon" style="background: white; border: 1px solid #10b981; color: #10b981; width: 24px; height: 24px; border-radius: 4px; cursor: pointer;">+</button>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'remover')" class="btn btn-outline btn-block btn-sm" style="margin-top: 15px; color: #991b1b; border-color: #fca5a5; font-weight: 600;">Desfazer Confirmação</button>
+                                </div>
+                            <?php else: ?>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'confirmado')" class="btn btn-primary" style="border-radius: 12px; height: 48px; font-weight: 700;"><i class="fa-solid fa-check"></i> Eu Vou</button>
+                                    <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'recusado')" class="btn btn-outline" style="border-radius: 12px; height: 48px; font-weight: 600; <?php echo ($status_user === 'recusado') ? 'background: #f1f5f9; border-color: #cbd5e1; color: #94a3b8;' : 'border-style: dashed;'; ?>">
+                                        <i class="fa-solid fa-xmark"></i> <?php echo ($status_user === 'recusado') ? 'Não irei' : 'Não poderei'; ?>
+                                    </button>
+                                </div>
+                            <?php endif; ?>
                         <?php else: ?>
-                            <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'confirmado')" class="btn btn-primary" style="border-radius: 8px;"><i class="fa-solid fa-user-check"></i> Eu vou participar</button>
-                            <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'recusado')" class="btn btn-outline" style="border-radius: 8px; <?php echo ($status_user === 'recusado') ? 'background: #f1f5f9; border-color: #cbd5e1; color: #94a3b8;' : 'border-style: dashed;'; ?>"><i class="fa-solid fa-xmark"></i> Não poderei</button>
+                            <div style="text-align: center; color: var(--text-muted); font-size: 0.85em; font-style: italic;">Não é necessário confirmar presença para este evento.</div>
                         <?php endif; ?>
                     </div>
+
+                    <?php if(!empty($ev['mapa_link'])): ?>
+                        <a href="<?php echo htmlspecialchars($ev['mapa_link']); ?>" target="_blank" class="btn btn-outline btn-block" style="margin-top: 10px; border-radius: 12px; font-size: 0.85em; border-color: var(--border); color: var(--text-muted);">
+                            <i class="fa-solid fa-location-arrow"></i> Ver Localização / Link
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endforeach; else: ?>
             <div class="card" style="grid-column: 1 / -1; padding: 60px; text-align: center;">
                 <i class="fa-solid fa-calendar-xmark" style="font-size: 4em; color: var(--text-muted); opacity: 0.3; margin-bottom: 20px; display: block;"></i>
                 <h3 style="color: var(--text-main); font-size: 1.3em;">Nenhum encontro agendado</h3>
-                <p style="color: var(--text-muted); margin-top: 5px;">Acompanhe o painel, em breve novas oportunidades para se conectar com a rede.</p>
+                <p style="color: var(--text-muted); margin-top: 5px;">Acompanhe o painel em breve para novas oportunidades de conexão.</p>
             </div>
         <?php endif; ?>
     </div>
     
-    <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN): ?>
-    <!-- Modal Add Evento -->
-    <div class="modal-overlay" id="modalAddEvento">
-        <div class="modal-content" style="max-width: 550px;">
-            <div class="modal-header">
-                <h2><i class="fa-solid fa-calendar-plus"></i> Novo Evento</h2>
-                <button class="close-modal" onclick="closeModal('modalAddEvento')"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="modal-body">
-                <form method="POST">
-                    <input type="hidden" name="acao" value="add_evento">
-                    <div class="input-group">
-                        <label>Título do Evento *</label>
-                        <input type="text" name="titulo" class="input-control premium-input" required placeholder="Ex: Café de Networking, Encontro Mensal...">
-                    </div>
-                    <div class="form-grid">
-                        <div class="input-group">
-                            <label>Data e Hora *</label>
-                            <input type="datetime-local" name="data_evento" class="input-control premium-input" required>
-                        </div>
-                        <div class="input-group">
-                            <label>Localização / Formato *</label>
-                            <input type="text" name="local" class="input-control premium-input" required placeholder="Ex: Online (Zoom), Clínica Melodias...">
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <label>Link para Mapa (Opcional)</label>
-                        <input type="url" name="mapa_link" class="input-control premium-input" placeholder="Google Maps ou Link do Zoom">
-                    </div>
-                    <div class="input-group">
-                        <label>Descrição / Pauta</label>
-                        <textarea name="descricao" class="input-control premium-input" rows="4" placeholder="Detalhes do encontro..."></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 15px; border-radius: 12px; font-weight: 800;"><i class="fa-solid fa-paper-plane"></i> Publicar Evento</button>
-                </form>
-            </div>
-        </div>
-    </div>
-    <?php endif; ?>
-    
     <script>
+    function copiarLinkPublico(eventoId) {
+        const link = window.location.href.split('Site/')[0] + 'Site/melodias/rsvp.php?id=' + eventoId;
+        navigator.clipboard.writeText(link).then(() => {
+            showToast('Sucesso', 'Link copiado para a área de transferência!', 'success');
+        });
+    }
+
+    function toggleContribuicao(eventoId, itemNome, operacao) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            <input type="hidden" name="acao" value="gerenciar_contribuicao">
+            <input type="hidden" name="evento_id" value="${eventoId}">
+            <input type="hidden" name="item_nome" value="${itemNome}">
+            <input type="hidden" name="operacao" value="${operacao}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    }
+    
+    function updateAcompanhantes(eventoId, qtd) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            <input type="hidden" name="acao" value="confirmar_presenca">
+            <input type="hidden" name="evento_id" value="${eventoId}">
+            <input type="hidden" name="status_presenca" value="confirmado">
+            <input type="hidden" name="acompanhantes" value="${qtd}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    }
+
     function confirmarPresenca(evento_id, status) {
         const form = document.createElement('form');
         form.method = 'POST';
@@ -4586,8 +4785,128 @@ elseif ($pagina === 'eventos'):
 
 
 <?php 
-// ### PÁGINA NÃO ENCONTRADA ###
-else: ?>
+// ### PÁGINA: RELATÓRIO DE EVENTO (FRAGMENTO AJAX) ###
+elseif ($pagina === 'event_report'):
+    $ev_id = (int)$_GET['id'];
+    $ev = $pdo->prepare("SELECT * FROM eventos WHERE id = ?");
+    $ev->execute([$ev_id]);
+    $evento = $ev->fetch();
+    
+    if(!$evento) die("<p class='error'>Evento não encontrado.</p>");
+    
+    // Lista de presença
+    $presencas = $pdo->prepare("SELECT ep.*, p.nome, p.whatsapp FROM eventos_presenca ep JOIN profissionais p ON ep.user_id = p.id WHERE ep.evento_id = ? ORDER BY p.nome ASC");
+    $presencas->execute([$ev_id]);
+    $lista_p = $presencas->fetchAll();
+
+    // Lista externa
+    $presencas_ext = $pdo->prepare("SELECT * FROM eventos_presenca_externa WHERE evento_id = ? ORDER BY nome ASC");
+    $presencas_ext->execute([$ev_id]);
+    $lista_p_ext = $presencas_ext->fetchAll();
+    
+    // Lista de contribuições
+    $contribuicoes = $pdo->prepare("SELECT ec.*, p.nome FROM eventos_contribuicoes ec JOIN profissionais p ON ec.user_id = p.id WHERE ec.evento_id = ? ORDER BY ec.item_nome ASC");
+    $contribuicoes->execute([$ev_id]);
+    $lista_c = $contribuicoes->fetchAll();
+    
+    $itens_definidos = array_filter(array_map('trim', explode(',', $evento['itens_colaborativos'])));
+    $totais_itens = [];
+    foreach($lista_c as $c) $totais_itens[$c['item_nome']][] = $c['nome'];
+    foreach($lista_p_ext as $ext) {
+        if(!empty($ext['contribuicao_item'])) $totais_itens[$ext['contribuicao_item']][] = $ext['nome'] . ' (Ext)';
+    }
+
+    $total_geral = count($lista_p) + count($lista_p_ext);
+?>
+<div id="report_data" style="display:none;">
+    <div style="padding: 30px;">
+        <div style="margin-bottom:25px;">
+        <h3 style="margin:0; font-size:1.4em; color:var(--text-main);"><?php echo htmlspecialchars($evento['titulo']); ?></h3>
+        <p style="color:var(--text-muted); margin:5px 0 0 0; font-size:0.9em;"><i class="fa-regular fa-calendar"></i> <?php echo date('d/m/Y H:i', strtotime($evento['data_evento'])); ?> • <?php echo htmlspecialchars($evento['local']); ?></p>
+    </div>
+
+    <!-- Seção de Presença -->
+    <div style="margin-bottom:30px;">
+        <h4 style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid var(--border); padding-bottom:8px; margin-bottom:15px; font-size:1em; color:var(--primary);">
+            <span><i class="fa-solid fa-users"></i> Lista de Presença</span>
+            <span style="font-size:0.8em; background:var(--primary); color:white; padding:2px 10px; border-radius:20px;"><?php echo $total_geral; ?> pessoas</span>
+        </h4>
+        <table class="premium-table" style="width:100%; font-size:0.9em;">
+            <thead>
+                <tr>
+                    <th style="text-align:left; padding:10px;">Nome</th>
+                    <th style="text-align:center; padding:10px;">Status</th>
+                    <th style="text-align:center; padding:10px;">Extras</th>
+                    <th style="text-align:right; padding:10px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach($lista_p as $p): ?>
+                <tr>
+                    <td style="padding:10px; font-weight:600;"><?php echo htmlspecialchars($p['nome']); ?></td>
+                    <td style="padding:10px; text-align:center;">
+                        <span class="badge" style="background:<?php echo $p['status']==='confirmado'?'#dcfce7':'#fee2e2'; ?>; color:<?php echo $p['status']==='confirmado'?'#166534':'#991b1b'; ?>;">
+                            <?php echo $p['status']==='confirmado'?'Confirmado':'Não vai'; ?>
+                        </span>
+                    </td>
+                    <td style="padding:10px; text-align:center;"><?php echo $p['acompanhantes'] > 0 ? '+'.$p['acompanhantes'] : '-'; ?></td>
+                    <td style="padding:10px; text-align:right;">
+                        <a href="https://wa.me/<?php echo preg_replace('/[^0-9]/','',$p['whatsapp']); ?>" target="_blank" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px;"><i class="fa-brands fa-whatsapp"></i></a>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+
+                <?php foreach($lista_p_ext as $ext): ?>
+                <tr style="background: rgba(168, 85, 247, 0.03);">
+                    <td style="padding:10px; font-weight:600;"><?php echo htmlspecialchars($ext['nome']); ?> <span class="badge badge-purple" style="font-size:0.55em; vertical-align:middle; margin-left:5px;">CONVIDADO EXT.</span></td>
+                    <td style="padding:10px; text-align:center;">
+                        <span class="badge" style="background:#f3e8ff; color:#6b21a8;">Convidado</span>
+                    </td>
+                    <td style="padding:10px; text-align:center;"><?php echo $ext['acompanhantes'] > 0 ? '+'.$ext['acompanhantes'] : '-'; ?></td>
+                    <td style="padding:10px; text-align:right;">
+                        <a href="https://wa.me/<?php echo preg_replace('/[^0-9]/','',$ext['whatsapp']); ?>" target="_blank" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px;"><i class="fa-brands fa-whatsapp"></i></a>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+
+                <?php if(empty($lista_p) && empty($lista_p_ext)): ?><tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhuma confirmação ainda.</td></tr><?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Seção de Contribuições -->
+    <?php if($evento['colaborativo_ativo']): ?>
+    <div>
+        <h4 style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid var(--border); padding-bottom:8px; margin-bottom:15px; font-size:1em; color:var(--primary);">
+            <span><i class="fa-solid fa-cart-shopping"></i> Divisão de Responsabilidades</span>
+        </h4>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:15px;">
+            <?php foreach($itens_definidos as $it): 
+                $responsaveis = $totais_itens[$it] ?? [];
+            ?>
+                <div style="background:var(--bg-body); padding:12px; border-radius:10px; border:1px solid <?php echo !empty($responsaveis)?'rgba(16,185,129,0.2)':'rgba(239,68,68,0.2)'; ?>;">
+                    <div style="font-weight:700; font-size:0.9em; margin-bottom:5px; color:var(--text-main);"><?php echo htmlspecialchars($it); ?></div>
+                    <div style="font-size:0.8em; color:var(--text-muted);">
+                        <?php if(empty($responsaveis)): ?>
+                            <span style="color:var(--danger); font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> Pendente</span>
+                        <?php else: ?>
+                            <?php echo implode(', ', $responsaveis); ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+    
+    <div style="margin-top:30px; display:flex; justify-content:flex-end;">
+        <button onclick="window.print()" class="btn btn-outline" style="border-radius:10px;"><i class="fa-solid fa-print"></i> Gerar PDF / Imprimir</button>
+    </div>
+    </div>
+</div>
+<?php 
+// ### FIM PÁGINA: RELATÓRIO DE EVENTO ###
+?>
                 <div class="page-header">
                     <h1>😕 Página Não Encontrada</h1>
                     <p>A página que você está procurando não existe.</p>
@@ -4641,15 +4960,30 @@ else: ?>
                     <input type="hidden" name="acao" value="change_password">
                     <div class="input-group">
                         <label>Senha Atual</label>
-                        <input type="password" name="senha_atual" class="input-control" required placeholder="Sua senha atual">
+                        <div class="input-password-wrapper">
+                            <input type="password" name="senha_atual" id="pwd_atual" class="input-control" required placeholder="Sua senha atual">
+                            <button type="button" class="btn-toggle-password" onclick="togglePassword(this, 'pwd_atual')">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label>Nova Senha (mínimo 8 caracteres)</label>
-                        <input type="password" name="nova_senha" class="input-control" required minlength="8" placeholder="Novas senha">
+                        <div class="input-password-wrapper">
+                            <input type="password" name="nova_senha" id="pwd_nova" class="input-control" required minlength="8" placeholder="Novas senha">
+                            <button type="button" class="btn-toggle-password" onclick="togglePassword(this, 'pwd_nova')">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label>Confirmar Nova Senha</label>
-                        <input type="password" name="confirma_senha" class="input-control" required minlength="8" placeholder="Repita a nova senha">
+                        <div class="input-password-wrapper">
+                            <input type="password" name="confirma_senha" id="pwd_confirma" class="input-control" required minlength="8" placeholder="Repita a nova senha">
+                            <button type="button" class="btn-toggle-password" onclick="togglePassword(this, 'pwd_confirma')">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary btn-block">
                         <i class="fa-solid fa-save"></i> Atualizar Senha
@@ -4743,6 +5077,19 @@ else: ?>
         // ========================================================
         // JAVASCRIPT - SISTEMA COMPLETO
         // ========================================================
+
+        // === VISIBILIDADE DE SENHA ===
+        function togglePassword(btn, targetId) {
+            const input = document.getElementById(targetId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
 
         // === TEMA CLARO/ESCURO ===
         function toggleTheme() {
@@ -5307,6 +5654,268 @@ else: ?>
                 });
             };
         })();
+    </script>
+    <!-- ========================================================
+         MODAIS GLOBAIS (FORA DO MAIN-CONTENT PARA EVITAR CONFLITOS DE Z-INDEX)
+         ======================================================== -->
+
+    <!-- Modal Novo Tópico -->
+    <div class="modal-overlay" id="modalNovoPost" style="z-index: 9999;">
+        <div class="modal-content" style="max-width:640px;">
+            <div class="modal-header">
+                <h2>✍️ Criar Novo Tópico</h2>
+                <button class="close-modal" onclick="closeModal('modalNovoPost')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="">
+                    <input type="hidden" name="acao" value="criar_post_forum">
+                    <div class="input-group">
+                        <label>Título do Tópico *</label>
+                        <input type="text" name="titulo" class="input-control" required maxlength="200" placeholder="Ex: Dúvida sobre abordagem terapêutica...">
+                    </div>
+                    <div class="input-group">
+                        <label>Categoria *</label>
+                        <select name="categoria" class="input-control" required>
+                            <option value="">Selecione uma categoria...</option>
+                            <option value="duvidas">❓ Dúvidas</option>
+                            <option value="discussao">💭 Discussão</option>
+                            <option value="recursos">📚 Recursos</option>
+                            <option value="anuncios">📢 Anúncios</option>
+                            <option value="geral">💬 Geral</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Conteúdo *</label>
+                        <textarea name="conteudo" class="input-control" required rows="7" placeholder="Descreva sua dúvida, compartilhe seu conhecimento..."></textarea>
+                    </div>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;">
+                        <button type="button" class="btn btn-outline" onclick="closeModal('modalNovoPost')">Cancelar</button>
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Publicar Tópico</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $role === ROLE_EDITOR): ?>
+    <!-- Modal Add Evento -->
+    <div class="modal-overlay" id="modalAddEvento" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-calendar-plus"></i> Criar Novo Encontro</h2>
+                <button class="close-modal" onclick="closeModal('modalAddEvento')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="acao" value="add_evento">
+                    
+                    <div class="input-group">
+                        <label>Imagem de Capa (Opcional)</label>
+                        <div class="file-upload-wrapper">
+                            <label class="file-upload-box" for="capa_add_file">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                                <span class="file-name" id="name_capa_add_file">Clique para subir a imagem de capa (SVG, PNG, JPG)</span>
+                                <span class="file-hint">Recomendado: 1200x600px para o card de evento</span>
+                                <input type="file" name="capa" id="capa_add_file" accept="image/*" onchange="document.getElementById('name_capa_add_file').innerText = this.files[0].name" style="display:none !important;">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Título do Evento *</label>
+                        <input type="text" name="titulo" class="input-control premium-input" required placeholder="Ex: Café de Networking, Encontro Mensal...">
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Data e Hora *</label>
+                            <input type="datetime-local" name="data_evento" class="input-control premium-input" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Localização / Formato *</label>
+                            <input type="text" name="local" class="input-control premium-input" required placeholder="Ex: Online (Zoom), Clínica Melodias...">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Link para Mapa (Opcional)</label>
+                        <input type="url" name="mapa_link" class="input-control premium-input" placeholder="Google Maps ou Link do Zoom">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Descrição / Pauta</label>
+                        <textarea name="descricao" class="input-control premium-input" rows="4" placeholder="Detalhes do encontro..."></textarea>
+                    </div>
+
+                    <div style="background:var(--bg-body); padding:20px; border-radius:12px; border:1px solid var(--border); margin-top:15px;">
+                        <h4 style="margin-bottom:15px; font-size:0.9em; text-transform:uppercase; color:var(--primary); letter-spacing:1px; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-toolbox"></i> Ferramentas Interativas</h4>
+                        
+                        <div style="display:flex; flex-direction:column; gap:12px;">
+                            <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer; font-size:0.95em;">
+                                <input type="checkbox" name="rsvp_ativo" value="1" checked style="width:20px; height:20px;"> Confirmação de Presença (RSVP)
+                            </label>
+                            
+                            <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer; font-size:0.95em;">
+                                <input type="checkbox" name="permite_acompanhantes" value="1" style="width:20px; height:20px;"> Permitir acompanhantes
+                            </label>
+
+                            <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer; font-size:0.95em;">
+                                <input type="checkbox" name="colaborativo_ativo" value="1" onchange="document.getElementById('colab_options_add').style.display = this.checked ? 'block':'none'" style="width:20px; height:20px;"> Organização Colaborativa
+                            </label>
+                        </div>
+
+                        <div id="colab_options_add" style="display:none; margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
+                            <label style="font-size:0.85em; font-weight:700; display:block; margin-bottom:8px;">Itens para contribuição (separados por vírgula):</label>
+                            <textarea name="itens_colaborativos" class="input-control premium-input" rows="2" placeholder="Ex: Café, Bolo, Pão, Suco, Frutas..."></textarea>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:12px; justify-content:flex-end; margin-top: 30px;">
+                        <button type="button" class="btn btn-outline" onclick="closeModal('modalAddEvento')">Cancelar</button>
+                        <button type="submit" class="btn btn-primary btn-lg" style="border-radius: 14px; font-weight: 800; padding: 12px 30px;"><i class="fa-solid fa-paper-plane"></i> Publicar Evento</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Edit Evento -->
+    <div class="modal-overlay" id="modalEditEvento" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-calendar-pen"></i> Ajustar Encontro</h2>
+                <button class="close-modal" onclick="closeModal('modalEditEvento')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="acao" value="edit_evento">
+                    <input type="hidden" name="id_evento" id="edit_ev_id">
+                    
+                    <div class="input-group">
+                        <label>Alterar Imagem de Capa</label>
+                        <div class="file-upload-wrapper">
+                            <label class="file-upload-box" for="capa_edit_file">
+                                <i class="fa-solid fa-image"></i>
+                                <span class="file-name" id="name_capa_edit_file">Clique para trocar a imagem de capa</span>
+                                <input type="file" name="capa" id="capa_edit_file" accept="image/*" onchange="document.getElementById('name_capa_edit_file').innerText = this.files[0].name" style="display:none !important;">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Título do Evento *</label>
+                        <input type="text" name="titulo" id="edit_ev_titulo" class="input-control premium-input" required>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Data e Hora *</label>
+                            <input type="datetime-local" name="data_evento" id="edit_ev_data" class="input-control premium-input" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Localização / Formato *</label>
+                            <input type="text" name="local" id="edit_ev_local" class="input-control premium-input" required>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Link para Mapa (Opcional)</label>
+                        <input type="url" name="mapa_link" id="edit_ev_mapa" class="input-control premium-input">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Descrição / Pauta</label>
+                        <textarea name="descricao" id="edit_ev_desc" class="input-control premium-input" rows="4"></textarea>
+                    </div>
+
+                    <div style="background:var(--bg-body); padding:20px; border-radius:12px; border:1px solid var(--border); margin-top:15px;">
+                        <h4 style="margin-bottom:15px; font-size:0.9em; text-transform:uppercase; color:var(--primary); letter-spacing:1px; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-toolbox"></i> Ferramentas</h4>
+                        
+                        <div style="display:flex; flex-direction:column; gap:12px;">
+                            <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer; font-size:0.95em;">
+                                <input type="checkbox" name="rsvp_ativo" value="1" id="edit_ev_rsvp" style="width:20px; height:20px;"> RSVP (Confirmados)
+                            </label>
+                            
+                            <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer; font-size:0.95em;">
+                                <input type="checkbox" name="permite_acompanhantes" value="1" id="edit_ev_acompanhantes" style="width:20px; height:20px;"> Acompanhantes
+                            </label>
+
+                            <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer; font-size:0.95em;">
+                                <input type="checkbox" name="colaborativo_ativo" value="1" id="edit_ev_colaborativo" onchange="document.getElementById('colab_options_edit').style.display = this.checked ? 'block':'none'" style="width:20px; height:20px;"> Organizador Colaborativo
+                            </label>
+                        </div>
+
+                        <div id="colab_options_edit" style="display:none; margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
+                            <label style="font-size:0.85em; font-weight:700; display:block; margin-bottom:8px;">Itens para contribuição:</label>
+                            <textarea name="itens_colaborativos" id="edit_ev_itens" class="input-control premium-input" rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:12px; justify-content:flex-end; margin-top: 30px;">
+                        <button type="button" class="btn btn-outline" onclick="closeModal('modalEditEvento')">Cancelar</button>
+                        <button type="submit" class="btn btn-primary btn-lg" style="border-radius: 14px; font-weight: 800; padding: 12px 30px;"><i class="fa-solid fa-save"></i> Salvar Mudanças</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Relatório do Evento -->
+    <div class="modal-overlay" id="modalRelatorioEvento" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 680px;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-chart-line"></i> Gestão do Evento</h2>
+                <button class="close-modal" onclick="closeModal('modalRelatorioEvento')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="relatorio_content" class="modal-body" style="padding:0;">
+                <div style="text-align:center; padding:60px;">
+                    <i class="fa-solid fa-circle-notch fa-spin fa-2x" style="color:var(--primary);"></i>
+                    <p style="margin-top:15px; color: var(--text-muted);">Carregando detalhes do evento...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <script>
+    function toggleItensColab(cb, targetId) {
+        document.getElementById(targetId).style.display = cb.checked ? 'block' : 'none';
+    }
+    
+    function abrirRelatorio(eventoId) {
+        openModal('modalRelatorioEvento');
+        const container = document.getElementById('relatorio_content');
+        container.innerHTML = `<div style="text-align:center; padding:40px;"><i class="fa-solid fa-circle-notch fa-spin fa-2x" style="color:var(--primary);"></i></div>`;
+        
+        fetch(`painel.php?page=event_report&id=${eventoId}`)
+            .then(res => res.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const content = doc.getElementById('report_data');
+                if(content) container.innerHTML = content.innerHTML;
+                else container.innerHTML = '<p class="error" style="text-align:center; padding:30px;">Falha ao carregar relatório.</p>';
+            });
+    }
+
+    function abrirEditarEvento(ev) {
+        document.getElementById('edit_ev_id').value = ev.id;
+        document.getElementById('edit_ev_titulo').value = ev.titulo;
+        document.getElementById('edit_ev_data').value = ev.data_evento.replace(' ', 'T').substring(0, 16);
+        document.getElementById('edit_ev_local').value = ev.local;
+        document.getElementById('edit_ev_mapa').value = ev.mapa_link;
+        document.getElementById('edit_ev_desc').value = ev.descricao;
+        
+        document.getElementById('edit_ev_rsvp').checked = parseInt(ev.rsvp_ativo) === 1;
+        document.getElementById('edit_ev_acompanhantes').checked = parseInt(ev.permite_acompanhantes) === 1;
+        
+        const colab = parseInt(ev.colaborativo_ativo) === 1;
+        document.getElementById('edit_ev_colaborativo').checked = colab;
+        document.getElementById('colab_options_edit').style.display = colab ? 'block' : 'none';
+        document.getElementById('edit_ev_itens').value = ev.itens_colaborativos || '';
+        
+        openModal('modalEditEvento');
+    }
     </script>
 
 </body>
