@@ -4785,9 +4785,14 @@ elseif ($pagina === 'event_report'):
     
     $itens_definidos = array_filter(array_map('trim', explode(',', $evento['itens_colaborativos'])));
     $totais_itens = [];
-    foreach($lista_c as $c) $totais_itens[$c['item_nome']][] = $c['nome'];
+    foreach($lista_c as $c) {
+        $totais_itens[$c['item_nome']][] = $c['nome'] . (!empty($c['contribuicao_obs']) ? ' <span style="font-weight:400; opacity:0.7; font-size:0.9em;">('.$c['contribuicao_obs'].')</span>' : '');
+    }
     foreach($lista_p_ext as $ext) {
-        if(!empty($ext['contribuicao_item'])) $totais_itens[$ext['contribuicao_item']][] = $ext['nome'] . ' (Ext)';
+        if(!empty($ext['contribuicao_item'])) {
+            $obs = !empty($ext['contribuicao_obs']) ? ' <span style="font-weight:400; opacity:0.7; font-size:0.9em;">('.$ext['contribuicao_obs'].')</span>' : '';
+            $totais_itens[$ext['contribuicao_item']][] = $ext['nome'] . ' (Ext)' . $obs;
+        }
     }
 
     $total_geral = count($lista_p) + count($lista_p_ext);
@@ -4811,6 +4816,7 @@ elseif ($pagina === 'event_report'):
                     <th style="text-align:left; padding:10px;">Nome</th>
                     <th style="text-align:center; padding:10px;">Status</th>
                     <th style="text-align:center; padding:10px;">Extras</th>
+                    <th style="text-align:left; padding:10px;">Obs</th>
                     <th style="text-align:right; padding:10px;">Ações</th>
                 </tr>
             </thead>
@@ -4824,6 +4830,7 @@ elseif ($pagina === 'event_report'):
                         </span>
                     </td>
                     <td style="padding:10px; text-align:center;"><?php echo $p['acompanhantes'] > 0 ? '+'.$p['acompanhantes'] : '-'; ?></td>
+                    <td style="padding:10px; font-size:0.85em; color:var(--text-muted);"><?php echo htmlspecialchars($p['contribuicao_obs'] ?? '-'); ?></td>
                     <td style="padding:10px; text-align:right;">
                         <div style="display:flex; justify-content:flex-end; gap:6px;">
                             <a href="https://wa.me/<?php echo preg_replace('/[^0-9]/','',$p['whatsapp']); ?>" target="_blank" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px; display:inline-flex; align-items:center; height:32px;" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
@@ -4840,6 +4847,7 @@ elseif ($pagina === 'event_report'):
                         <span class="badge" style="background:#f3e8ff; color:#6b21a8;">Convidado</span>
                     </td>
                     <td style="padding:10px; text-align:center;"><?php echo $ext['acompanhantes'] > 0 ? '+'.$ext['acompanhantes'] : '-'; ?></td>
+                    <td style="padding:10px; font-size:0.85em; color:var(--text-muted);"><?php echo htmlspecialchars($ext['contribuicao_obs'] ?? '-'); ?></td>
                     <td style="padding:10px; text-align:right;">
                         <div style="display:flex; justify-content:flex-end; gap:6px;">
                             <a href="https://wa.me/<?php echo preg_replace('/[^0-9]/','',$ext['whatsapp']); ?>" target="_blank" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px; display:inline-flex; align-items:center; height:32px;" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
@@ -4849,7 +4857,7 @@ elseif ($pagina === 'event_report'):
                 </tr>
                 <?php endforeach; ?>
 
-                <?php if(empty($lista_p) && empty($lista_p_ext)): ?><tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhuma confirmação ainda.</td></tr><?php endif; ?>
+                <?php if(empty($lista_p) && empty($lista_p_ext)): ?><tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-muted);">Nenhuma confirmação ainda.</td></tr><?php endif; ?>
             </tbody>
         </table>
     </div>

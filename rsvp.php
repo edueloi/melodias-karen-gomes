@@ -760,6 +760,15 @@ if (!empty($evento['colaborativo_ativo']) && !empty($evento['itens_colaborativos
         input.value = Math.max(0, Math.min(20, val));
     }
 
+    // Formatação de Máscara de Telefone (WhatsApp)
+    const phoneInput = document.getElementById('rsvp_whatsapp');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function (e) {
+            let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
+            e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
+        });
+    }
+
     // Simple form protection against double-submit
     const form = document.querySelector('form');
     const btn  = document.getElementById('btn_confirmar');
