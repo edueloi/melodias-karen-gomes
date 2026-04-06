@@ -71,8 +71,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro - Melodias</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.mi    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <title>Cadastro | Rede Melodias — Plataforma de Gestão</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/favicon.png">
+
+    <!-- SEO / Meta Social -->
+    <meta name="description" content="Junte-se à Rede Melodias. Finalize seu cadastro para acessar nossa plataforma exclusiva de gestão e conexão.">
+    <meta property="og:title" content="Cadastro | Rede Melodias">
+    <meta property="og:description" content="Finalize seu cadastro na Rede Melodias.">
+    <meta property="og:image" content="images/share-banner.png">
+    <meta property="og:type" content="website">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #6e2b3a;
@@ -82,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
             --text-muted: #6b5057;
             --border: #e8dde0;
             --radius: 20px;
-            --shadow: 0 20px 50px rgba(110,43,58,0.1);
+            --shadow: 0 25px 50px rgba(110,43,58,0.15);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -111,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
         
         .header {
             background: linear-gradient(135deg, var(--primary), #9d405a);
-            padding: 50px 30px;
+            padding: 50px 30px 40px;
             text-align: center;
             color: white;
             position: relative;
@@ -125,13 +140,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
             border-radius: 50%;
             top: -50px; right: -50px;
         }
+        .header-logo {
+            height: 90px;
+            margin-bottom: 20px;
+            filter: brightness(0) invert(1) drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+            position: relative;
+            z-index: 2;
+        }
         .header h1 { 
-            font-size: 2.2em; 
+            font-size: 2.1em; 
             font-weight: 900; 
             margin-bottom: 8px; 
             letter-spacing: -0.5px;
+            position: relative;
+            z-index: 2;
         }
-        .header p { opacity: 0.9; font-size: 1em; font-weight: 500; }
+        .header p { opacity: 0.9; font-size: 1.05em; font-weight: 500; position: relative; z-index: 2; }
         
         .body { padding: 40px 35px; }
         
@@ -221,12 +245,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
         a { color: var(--primary); font-weight: 700; text-decoration: none; transition: color 0.2s; }
         a:hover { color: var(--primary-hover); text-decoration: underline; }
     </style>
-/style>
 </head>
 <body>
 
     <div class="reg-card">
         <div class="header">
+            <img src="images/logo-melodias.png" alt="Melodias" class="header-logo">
             <h1>Melodias</h1>
             <p>Seja bem-vindo à nossa plataforma</p>
         </div>
