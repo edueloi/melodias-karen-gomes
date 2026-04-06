@@ -537,6 +537,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $notificacao = "showToast('Removido', 'Presença removida com sucesso!', 'success');";
         }
+
+        if ($acao === 'toggle_contribuicao') {
+            $ev_id = $_POST['evento_id'];
+            $item = $_POST['item_nome'];
+            $mode = $_POST['modo']; // 'adicionar' ou 'remover'
+            $obs = sanitize($_POST['obs'] ?? '');
+
+            if ($mode === 'adicionar') {
+                $pdo->prepare("INSERT INTO eventos_contribuicoes (evento_id, user_id, item_nome, contribuicao_obs) VALUES (?, ?, ?, ?)")
+                    ->execute([$ev_id, $id_usuario, $item, $obs]);
+                $notificacao = "showToast('Confirmado', 'Você está levando: $item', 'success');";
+            } else {
+                $pdo->prepare("DELETE FROM eventos_contribuicoes WHERE evento_id = ? AND user_id = ? AND item_nome = ?")
+                    ->execute([$ev_id, $id_usuario, $item]);
+                $notificacao = "showToast('Removido', 'Você não está mais levando este item.', 'info');";
+            }
+        }
     
         // --- MATERIAIS ---
         if ($acao === 'add_material') {
@@ -980,7 +997,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $pagina = $_GET['page'] ?? 'dashboard';
 
-// Verifica se o banco está atualizado - DESABILITADO (setup já garante que está OK)
+// Verifica se o banco está atualizado (Auto-migração para Contribuições)
+if ($role === ROLE_SUPERADMIN) {
+    try {
+        // Tenta rodar a migração silenciosamente. Se já existir, o PDO apenas ignorará (ou falhará no try/catch)
+        // Isso garante que em produção as colunas sejam criadas no primeiro login do Super Admin.
+        @$pdo->exec("ALTER TABLE eventos_presenca_externa ADD contribuicao_obs TEXT");
+        @$pdo->exec("ALTER TABLE eventos_presenca ADD contribuicao_obs TEXT");
+        @$pdo->exec("ALTER TABLE eventos_contribuicoes ADD contribuicao_obs TEXT");
+    } catch (Exception $e) { /* Colunas já existem ou erro silencioso */ }
+}
 $banco_desatualizado = false;
 
 ?><!DOCTYPE html>
@@ -4642,31 +4668,49 @@ elseif ($pagina === 'eventos'):
                             <div style="overflow-y: auto; flex: 1; padding-right: 5px;" class="custom-scrollbar">
                                 <?php 
                                     $itens = array_filter(array_map('trim', explode(',', $ev['itens_colaborativos'])));
-                                    $contribuicoes = $pdo->prepare("SELECT ec.*, p.nome FROM eventos_contribuicoes ec JOIN profissionais p ON ec.user_id = p.id WHERE ec.evento_id = ?");
-                                    $contribuicoes->execute([$ev['id']]);
-                                    $lista_contribuicoes = $contribuicoes->fetchAll();
+                                    
+                                    // Buscar TODAS as contribuições (Internas e Externas)
+                                    $sql_all = "
+                                        SELECT item_nome, p.nome as pessoa, 'int' as tipo, ec.user_id 
+                                        FROM eventos_contribuicoes ec 
+                                        JOIN profissionais p ON ec.user_id = p.id 
+                                        WHERE ec.evento_id = ?
+                                        UNION ALL
+                                        SELECT contribuicao_item as item_nome, nome as pessoa, 'ext' as tipo, 0 as user_id
+                                        FROM eventos_presenca_externa 
+                                        WHERE evento_id = ? AND status = 'confirmado' AND contribuicao_item IS NOT NULL AND contribuicao_item != ''
+                                    ";
+                                    $stmt_all = $pdo->prepare($sql_all);
+                                    $stmt_all->execute([$ev['id'], $ev['id']]);
+                                    $lista_contribuicoes = $stmt_all->fetchAll();
+
                                     $meus_itens = []; $distribuicao = [];
                                     foreach($lista_contribuicoes as $ct) {
-                                        $distribuicao[$ct['item_nome']][] = explode(' ', $ct['nome'])[0];
+                                        $p_nome = explode(' ', $ct['pessoa'])[0];
+                                        $label = ($ct['tipo'] === 'ext') ? $p_nome . " (Ext)" : $p_nome;
+                                        $distribuicao[$ct['item_nome']][] = $label;
                                         if($ct['user_id'] == $id_usuario) $meus_itens[] = $ct['item_nome'];
                                     }
                                 ?>
                                 <?php foreach($itens as $it): 
                                     $estou_levando = in_array($it, $meus_itens);
                                     $quem_leva = $distribuicao[$it] ?? [];
+                                    $ja_tem_alguem = !empty($quem_leva);
                                 ?>
-                                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8em; padding: 4px 0; border-bottom: 1px solid rgba(146,64,14,0.05);">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8em; padding: 6px 0; border-bottom: 1px solid rgba(146,64,14,0.05); <?php echo $ja_tem_alguem ? 'opacity: 0.85;' : ''; ?>">
                                         <div style="display: flex; flex-direction: column; max-width: 60%;">
-                                            <span style="font-weight: 700; color: #451a03;"><?php echo htmlspecialchars($it); ?></span>
-                                            <span style="font-size: 0.75em; color: #92400e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                <?php echo empty($quem_leva) ? '<i>Ninguém</i>' : implode(', ', $quem_leva); ?>
+                                            <span style="font-weight: 700; color: #451a03; <?php echo $ja_tem_alguem ? 'text-decoration: line-through; color: #92400e;' : ''; ?>">
+                                                <?php echo htmlspecialchars($it); ?>
+                                            </span>
+                                            <span style="font-size: 0.75em; color: #92400e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic;">
+                                                <?php echo empty($quem_leva) ? '<span style="opacity:0.5">Disponível</span>' : '<i class="fa-solid fa-user-tag" style="font-size:0.9em"></i> '.implode(', ', $quem_leva); ?>
                                             </span>
                                         </div>
                                         <?php if($status_user === 'confirmado'): ?>
                                             <button onclick="toggleContribuicao(<?php echo $ev['id']; ?>, '<?php echo addslashes($it); ?>', '<?php echo $estou_levando ? 'remover' : 'adicionar'; ?>')" 
                                                     class="btn btn-sm <?php echo $estou_levando ? 'btn-success' : 'btn-outline'; ?>" 
-                                                    style="padding: 2px 8px; border-radius: 12px; font-size: 0.75em; border-width: 1px;">
-                                                <?php echo $estou_levando ? 'Levando' : '+ Item'; ?>
+                                                    style="padding: 2px 8px; border-radius: 12px; font-size: 0.75em; border-width: 1px; min-width: 75px;">
+                                                <?php echo $estou_levando ? 'Levando' : ($ja_tem_alguem ? '+ Apoiar' : '+ Item'); ?>
                                             </button>
                                         <?php endif; ?>
                                     </div>
@@ -6306,6 +6350,45 @@ elseif ($pagina === 'event_report'):
         }
 
         openModal('modalVerEvento');
+    }
+
+    function toggleContribuicao(evId, item, modo) {
+        if (modo === 'remover') {
+            confirmarAcao({
+                titulo: 'Remover Item',
+                msg: `Você não quer mais levar "<b>${item}</b>"?`,
+                btnText: 'Sim, Remover',
+                btnClass: 'btn-danger',
+                callback: function() {
+                    submitForm({ acao: 'toggle_contribuicao', evento_id: evId, item_nome: item, modo: 'remover' });
+                }
+            });
+        } else {
+            confirmarAcao({
+                titulo: 'Apoiar Encontro',
+                msg: `Você se comprometeu a levar "<b>${item}</b>".<br><br><label style="font-size:0.85em; font-weight:600; display:block; margin-bottom:8px;">Observação? (Opcional)</label><input type="text" id="contrib_obs_input" class="premium-input" placeholder="Ex: Levando 2 pacotes..." style="width:100%;">`,
+                btnText: 'Confirmar Apoio',
+                btnClass: 'btn-success',
+                callback: function() {
+                    const obs = document.getElementById('contrib_obs_input').value;
+                    submitForm({ acao: 'toggle_contribuicao', evento_id: evId, item_nome: item, modo: 'adicionar', obs: obs });
+                }
+            });
+        }
+    }
+
+    function submitForm(dados) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        for (const key in dados) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = dados[key];
+            form.appendChild(input);
+        }
+        document.body.appendChild(form);
+        form.submit();
     }
     </script>
 

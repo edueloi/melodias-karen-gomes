@@ -21,19 +21,37 @@ if (!$evento) {
     die("Evento não encontrado.");
 }
 
+// Buscar contribuições já registradas
+$contribuicoes_existentes = [];
+if (!empty($evento['colaborativo_ativo'])) {
+    try {
+        $stmt_c = $pdo->prepare("
+            SELECT item_nome, p.nome as pessoa FROM eventos_contribuicoes ec JOIN profissionais p ON ec.user_id = p.id WHERE ec.evento_id = ?
+            UNION ALL
+            SELECT contribuicao_item as item_nome, nome as pessoa FROM eventos_presenca_externa WHERE evento_id = ? AND status = 'confirmado' AND contribuicao_item IS NOT NULL AND contribuicao_item != ''
+        ");
+        $stmt_c->execute([$id_evento, $id_evento]);
+        while($row = $stmt_c->fetch()) {
+            $p_nome = explode(' ', $row['pessoa'])[0];
+            $contribuicoes_existentes[$row['item_nome']][] = $p_nome;
+        }
+    } catch (Exception $e) {}
+}
+
 // Processar RSVP
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nome         = strip_tags(trim($_POST['nome'] ?? ''));
     $whatsapp     = strip_tags(trim($_POST['whatsapp'] ?? ''));
     $acompanhantes = max(0, (int)($_POST['acompanhantes'] ?? 0));
     $contribuicao = strip_tags(trim($_POST['contribuicao'] ?? ''));
+    $obs          = strip_tags(trim($_POST['contribuicao_obs'] ?? ''));
 
     if (empty($nome)) {
         $error = "Por favor, informe seu nome.";
     } else {
         try {
-            $pdo->prepare("INSERT INTO eventos_presenca_externa (evento_id, nome, whatsapp, acompanhantes, contribuicao_item, status) VALUES (?, ?, ?, ?, ?, 'confirmado')")
-                ->execute([$id_evento, $nome, $whatsapp, $acompanhantes, $contribuicao]);
+            $pdo->prepare("INSERT INTO eventos_presenca_externa (evento_id, nome, whatsapp, acompanhantes, contribuicao_item, contribuicao_obs, status) VALUES (?, ?, ?, ?, ?, ?, 'confirmado')")
+                ->execute([$id_evento, $nome, $whatsapp, $acompanhantes, $contribuicao, $obs]);
             $success = true;
         } catch (Exception $e) {
             $error = "Não foi possível salvar sua confirmação. Tente novamente.";
@@ -538,6 +556,28 @@ if (!empty($evento['colaborativo_ativo']) && !empty($evento['itens_colaborativos
         .hero { min-height: 240px; padding-bottom: 70px; }
         .card-body { padding: 24px 20px; }
     }
+    .contrib-pill + label.taken {
+        opacity: 0.7;
+        position: relative;
+        padding-bottom: 22px;
+        color: var(--muted);
+        text-decoration: line-through;
+        border-style: dotted;
+    }
+    .pill-owner {
+        position: absolute;
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.65em;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--primary);
+        white-space: nowrap;
+        text-decoration: none !important;
+        display: block;
+    }
+    .contrib-pill:checked + label.taken { text-decoration: none; border-style: solid; opacity: 1; }
     </style>
 </head>
 <body>
@@ -663,13 +703,32 @@ if (!empty($evento['colaborativo_ativo']) && !empty($evento['itens_colaborativos
                         <div class="contrib-pills" role="group" aria-label="Escolha um item para contribuição">
                             <input type="radio" class="contrib-pill" name="contribuicao" id="contrib_nenhum" value="" checked>
                             <label for="contrib_nenhum">🚫 Nenhum</label>
-                            <?php foreach ($itens_colab as $i => $item): ?>
+                            <?php foreach ($itens_colab as $i => $item): 
+                                $quem_leva = $contribuicoes_existentes[$item] ?? [];
+                                $ja_tem = !empty($quem_leva);
+                            ?>
                             <input type="radio" class="contrib-pill" name="contribuicao" id="contrib_<?= $i ?>" value="<?= htmlspecialchars($item) ?>">
-                            <label for="contrib_<?= $i ?>"><?= htmlspecialchars($item) ?></label>
+                            <label for="contrib_<?= $i ?>" class="<?= $ja_tem ? 'taken' : '' ?>">
+                                <?= htmlspecialchars($item) ?>
+                                <?php if($ja_tem): ?>
+                                    <span class="pill-owner"><?= implode(', ', $quem_leva) ?></span>
+                                <?php endif; ?>
+                            </label>
                             <?php endforeach; ?>
                         </div>
                     </div>
                     <?php endif; ?>
+
+                    <div class="form-group">
+                        <label for="rsvp_obs">Deseja trazer algo diferente ou deixar uma observação?</label>
+                        <textarea
+                            id="rsvp_obs"
+                            name="contribuicao_obs"
+                            class="form-control"
+                            rows="2"
+                            placeholder="Ex: Vou levar também um suco natural..."
+                        ><?= htmlspecialchars($_POST['contribuicao_obs'] ?? '') ?></textarea>
+                    </div>
 
                     <button type="submit" class="btn-submit" id="btn_confirmar" aria-label="Confirmar presença no evento">
                         <i class="fa-solid fa-circle-check" aria-hidden="true"></i> Confirmar Presença
