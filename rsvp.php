@@ -233,10 +233,11 @@ if (!empty($evento['colaborativo_ativo']) && !empty($evento['itens_colaborativos
     /* ── LOGO ── */
     .hero-logo {
         position: relative;
-        height: 60px;
-        margin-bottom: 25px;
-        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        height: 80px;
+        margin-bottom: 20px;
+        filter: brightness(0) invert(1) drop-shadow(0 4px 12px rgba(0,0,0,0.3));
         transition: transform 0.3s ease;
+        opacity: 1;
     }
     .hero-logo:hover { transform: scale(1.05); }
 
