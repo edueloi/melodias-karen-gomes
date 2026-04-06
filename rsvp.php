@@ -131,86 +131,114 @@ if (!empty($evento['colaborativo_ativo']) && !empty($evento['itens_colaborativos
         flex-direction: column;
         align-items: center;
         padding: 0 0 60px;
+        opacity: 0;
+        animation: pageFadeIn 0.8s ease forwards;
+    }
+
+    @keyframes pageFadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     /* ── HERO ── */
     .hero {
         width: 100%;
         position: relative;
-        min-height: 280px;
+        min-height: 400px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: flex-end;
-        padding-bottom: 80px;
+        justify-content: center;
+        padding-bottom: 100px;
+        padding-top: 40px;
         overflow: hidden;
-        background: linear-gradient(145deg, var(--primary-dk) 0%, var(--primary-lt) 100%);
+        background: var(--bg);
     }
     .hero-bg {
         position: absolute; inset: 0;
         background-size: cover;
         background-position: center;
-        filter: brightness(0.45) saturate(1.2);
-        transition: opacity 0.4s;
+        filter: brightness(0.55) saturate(1.2) blur(2px);
+        transform: scale(1.1);
+        transition: transform 10s ease-out;
     }
+    .hero:hover .hero-bg { transform: scale(1.2); }
+    
     .hero-overlay {
         position: absolute; inset: 0;
-        background: linear-gradient(to bottom, rgba(82,31,43,0.3) 0%, rgba(82,31,43,0.85) 100%);
+        background: linear-gradient(to bottom, 
+            rgba(82, 31, 43, 0.4) 0%, 
+            rgba(82, 31, 43, 0.7) 50%, 
+            var(--bg) 100%);
     }
     .hero-content {
         position: relative;
         text-align: center;
         color: white;
-        padding: 0 24px;
-        width: 100%;
+        padding: 40px 24px;
+        width: calc(100% - 40px);
         max-width: 600px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 30px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        animation: heroPopup 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+    @keyframes heroPopup {
+        from { opacity: 0; transform: translateY(30px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
     }
     .hero-badge {
-        display: inline-block;
-        background: rgba(255,255,255,0.15);
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,0.25);
-        color: var(--accent);
-        font-size: 0.7em;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--primary);
+        color: white;
+        font-size: 0.75em;
         font-weight: 800;
-        letter-spacing: 3px;
+        letter-spacing: 2px;
         text-transform: uppercase;
-        padding: 6px 16px;
+        padding: 8px 20px;
         border-radius: 30px;
-        margin-bottom: 14px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(110,43,58,0.3);
     }
     .hero h1 {
-        font-size: clamp(1.5rem, 5vw, 2.2rem);
+        font-size: clamp(1.8rem, 6vw, 2.8rem);
         font-weight: 900;
-        line-height: 1.2;
-        margin-bottom: 14px;
-        text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        line-height: 1.1;
+        margin-bottom: 20px;
+        text-shadow: 0 2px 15px rgba(0,0,0,0.4);
     }
     .hero-meta {
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 10px 20px;
-        font-size: 0.88em;
-        opacity: 0.9;
+        gap: 12px 24px;
+        font-size: 0.95em;
+        font-weight: 500;
     }
     .hero-meta span {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
+        background: rgba(0,0,0,0.2);
+        padding: 6px 14px;
+        border-radius: 12px;
     }
     .hero-meta i { color: var(--accent); }
 
-    /* ── LOGO in hero ── */
+    /* ── LOGO ── */
     .hero-logo {
-        position: absolute;
-        top: 22px;
-        left: 50%;
-        transform: translateX(-50%);
-        height: 44px;
-        filter: brightness(0) invert(1);
-        opacity: 0.9;
+        position: relative;
+        height: 60px;
+        margin-bottom: 25px;
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        transition: transform 0.3s ease;
     }
+    .hero-logo:hover { transform: scale(1.05); }
 
     /* ── CARD ── */
     .card-wrap {
@@ -229,12 +257,14 @@ if (!empty($evento['colaborativo_ativo']) && !empty($evento['itens_colaborativos
         border: 1px solid var(--border);
     }
 
-    /* ── EVENT IMAGE FULL ── */
+    /* ── EVENT IMAGE ── */
     .event-img {
         width: 100%;
-        height: 200px;
-        object-fit: cover;
+        max-height: 450px;
+        object-fit: contain;
+        background: #fdfdfd;
         display: block;
+        border-bottom: 1px solid var(--border);
     }
 
     /* ── DESCRIPTION banner ── */
@@ -345,20 +375,30 @@ if (!empty($evento['colaborativo_ativo']) && !empty($evento['itens_colaborativos
         display: none;
     }
     .contrib-pill + label {
-        padding: 8px 16px;
-        border-radius: 30px;
+        padding: 10px 18px;
+        border-radius: 14px;
         border: 2px solid var(--border);
-        font-size: 0.85em;
+        font-size: 0.88em;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         color: var(--muted);
         background: #fdfdfd;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .contrib-pill + label:hover {
+        border-color: var(--accent);
+        background: #fffafa;
+        transform: translateY(-2px);
     }
     .contrib-pill:checked + label {
         background: var(--primary);
         color: white;
         border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(110,43,58,0.25);
+        transform: translateY(-2px);
     }
 
     /* Submit button */
@@ -514,12 +554,13 @@ if (!empty($evento['colaborativo_ativo']) && !empty($evento['itens_colaborativos
         <div class="hero-bg" style="background-image: url('<?= $capa_url ?>')" role="img" aria-label="Imagem de capa do evento <?= $titulo ?>"></div>
         <?php endif; ?>
         <div class="hero-overlay"></div>
-        <img src="images/logo-melodias.png" alt="Rede Melodias" class="hero-logo" loading="lazy">
+        
         <div class="hero-content">
-            <span class="hero-badge">📅 Confirme Sua Presença</span>
+            <img src="images/logo-melodias.png" alt="Rede Melodias" class="hero-logo" loading="lazy">
+            <span class="hero-badge"><i class="fa-regular fa-calendar-check"></i> Confirme Sua Presença</span>
             <h1><?= $titulo ?></h1>
             <div class="hero-meta">
-                <span><i class="fa-regular fa-calendar" aria-hidden="true"></i> <?= $data_fmt ?></span>
+                <span><i class="fa-regular fa-calendar-days" aria-hidden="true"></i> <?= $data_fmt ?></span>
                 <?php if (!empty($local)): ?>
                 <span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> <?= $local ?></span>
                 <?php endif; ?>

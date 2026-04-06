@@ -156,6 +156,37 @@ $results[] = runMigration($pdo, $driver,
 );
 
 // ====================================================
+// TABELA: convites — links de convite externos
+// ====================================================
+$mysql_convites = "
+CREATE TABLE IF NOT EXISTS convites (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    token VARCHAR(64) NOT NULL UNIQUE,
+    expira_em DATETIME NOT NULL,
+    limite_usos INT NOT NULL DEFAULT 40,
+    usos_atuais INT NOT NULL DEFAULT 0,
+    role_atribuida VARCHAR(20) NOT NULL DEFAULT 'usuario',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_token (token)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+";
+$sqlite_convites = "
+CREATE TABLE IF NOT EXISTS convites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT NOT NULL UNIQUE,
+    expira_em DATETIME NOT NULL,
+    limite_usos INTEGER DEFAULT 40,
+    usos_atuais INTEGER DEFAULT 0,
+    role_atribuida TEXT DEFAULT 'usuario',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+";
+$results[] = runMigration($pdo, $driver,
+    'CREATE TABLE convites',
+    $mysql_convites, $sqlite_convites
+);
+
+// ====================================================
 // SAÍDA HTML
 // ====================================================
 $ok    = array_filter($results, fn($r) => $r['status'] === 'ok');

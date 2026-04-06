@@ -676,6 +676,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // =========== AÇÕES EXCLUSIVAS DO SUPERADMIN ===========
     if ($role === ROLE_SUPERADMIN) {
         
+        // GERAR LINK DE CONVITE
+        if ($acao === 'gerar_convite') {
+            $limite = (int)$_POST['limite'];
+            $validade_h = (int)$_POST['validade_horas'];
+            $role_atribuida = $_POST['role'];
+            $token = bin2hex(random_bytes(16)); // 32 chars
+            
+            $expira = date('Y-m-d H:i:s', strtotime("+{$validade_h} hours"));
+            
+            $stmt = $pdo->prepare("INSERT INTO convites (token, expira_em, limite_usos, role_atribuida) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$token, $expira, $limite, $role_atribuida]);
+            
+            $notificacao = "showToast('Link Gerado', 'O link de convite foi criado com sucesso!', 'success');";
+        }
+        
+        // DELETAR LINK DE CONVITE
+        if ($acao === 'delete_convite') {
+            $id_c = $_POST['id_convite'];
+            $pdo->prepare("DELETE FROM convites WHERE id = ?")->execute([$id_c]);
+            $notificacao = "showToast('Excluído', 'O link de convite foi removido.', 'error');";
+        }
+
         // CRIAR NOVO USUÁRIO
         if ($acao === 'criar_usuario') {
             $nome = sanitize($_POST['nome']);
@@ -1214,6 +1236,12 @@ $banco_desatualizado = false;
             padding: 7px; border-radius: 10px; width: 38px; height: 38px;
             display: flex; align-items: center; justify-content: center;
         }
+        
+        /* Estilo para quando o modal está aberto (apenas overflow se necessário) */
+        html.modal-active {
+            overflow: hidden;
+        }
+        
         .theme-btn:hover { border-color: var(--primary); transform: rotate(20deg); color: var(--primary); background: rgba(110,43,58,0.05); }
         .mobile-toggle { display: none; margin-right: 15px; }
 
@@ -3986,143 +4014,75 @@ elseif ($pagina === 'usuarios'):
                     </table>
                 </div>
 
-                <!-- Modal: Criar Usuário -->
-                <div class="modal-overlay" id="modalCriarUsuario">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h2><i class="fa-solid fa-user-plus"></i> Novo Usuário</h2>
-                            <button class="close-modal" onclick="closeModal('modalCriarUsuario')">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
+                <!-- Nova Seção: Convites Externos -->
+                <div style="margin-top: 40px; border-top: 1px solid var(--border); padding-top: 30px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                        <div>
+                            <h2 style="font-size: 1.4em; font-weight: 800; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-paper-plane" style="color: var(--primary);"></i> Links de Convite Externos
+                            </h2>
+                            <p style="color: var(--text-muted); font-size: 0.9em;">Gere links para pessoas se cadastrem sozinhas com limites e validade.</p>
                         </div>
-                        <div class="modal-body">
-                            <form method="POST">
-                                <input type="hidden" name="acao" value="criar_usuario">
+                        <button onclick="openModal('modalGerarConvite')" class="btn btn-outline" style="border-radius: 10px; font-weight: 600;">
+                            <i class="fa-solid fa-link"></i> Gerar Novo Link
+                        </button>
+                    </div>
 
-                                <div class="input-group">
-                                    <label>Nome Completo *</label>
-                                    <input type="text" name="nome" class="input-control" required 
-                                           placeholder="Ex: Maria Silva Santos">
-                                </div>
-                                <div class="input-group">
-                                    <label>E-mail *</label>
-                                    <input type="email" name="email" class="input-control" required 
-                                           placeholder="usuario@email.com">
-                                </div>
-                                <div class="input-group">
-                                    <label>Senha *</label>
-                                    <div class="input-password-wrapper">
-                                        <input type="password" name="senha" id="create_user_pass" class="input-control" required 
-                                               placeholder="Mínimo 6 caracteres" minlength="6">
-                                        <button type="button" class="btn-toggle-password" onclick="togglePassword(this, 'create_user_pass')">
-                                            <i class="fa-solid fa-eye"></i>
+                    <?php 
+                        try {
+                            $convites = $pdo->query("SELECT * FROM convites ORDER BY created_at DESC")->fetchAll();
+                        } catch (Exception $e) {
+                            $convites = [];
+                        }
+                        if(empty($convites)):
+                    ?>
+                        <div style="text-align: center; padding: 40px; background: rgba(0,0,0,0.02); border: 2px dashed var(--border); border-radius: 20px;">
+                            <i class="fa-solid fa-link-slash" style="font-size: 2em; color: var(--text-muted); margin-bottom: 15px; opacity: 0.5;"></i>
+                            <p style="color: var(--text-muted); font-weight: 600;">Nenhum link de convite ativo.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="grid-cards" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+                            <?php foreach($convites as $c): 
+                                $expirado = strtotime($c['expira_em']) < time();
+                                $esgotado = $c['usos_atuais'] >= $c['limite_usos'];
+                                $cor = ($expirado || $esgotado) ? 'var(--text-muted)' : 'var(--primary)';
+                                $full_url = "https://".$_SERVER['HTTP_HOST']. dirname($_SERVER['PHP_SELF']) ."/registro.php?token=".$c['token'];
+                            ?>
+                                <div class="card" style="padding: 20px; position: relative; opacity: <?php echo ($expirado || $esgotado) ? '0.7' : '1'; ?>;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                                        <div style="background: rgba(110,43,58,0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: <?php echo $cor; ?>;">
+                                            <i class="fa-solid fa-link"></i>
+                                        </div>
+                                        <?php if($expirado): ?>
+                                            <span class="badge badge-danger">Expirado</span>
+                                        <?php elseif($esgotado): ?>
+                                            <span class="badge badge-warning">Esgotado</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-success">Ativo</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <h4 style="margin-bottom: 5px; font-weight: 700;">Cargo: <?php echo ucfirst($c['role_atribuida']); ?></h4>
+                                    <p style="font-size: 0.8em; color: var(--text-muted); margin-bottom: 15px;">
+                                        <i class="fa-solid fa-users" style="width: 15px;"></i> <?php echo $c['usos_atuais']; ?> / <?php echo $c['limite_usos']; ?> inscrições<br>
+                                        <i class="fa-solid fa-clock" style="width: 15px;"></i> Expira: <?php echo date('d/m/Y H:i', strtotime($c['expira_em'])); ?>
+                                    </p>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button onclick='copiarLink("<?php echo $full_url; ?>")' class="btn btn-primary btn-sm" style="flex: 1; border-radius: 8px;">
+                                            <i class="fa-solid fa-copy"></i> Copiar Link
                                         </button>
+                                        <form method="POST" style="flex: 0;">
+                                            <input type="hidden" name="acao" value="delete_convite">
+                                            <input type="hidden" name="id_convite" value="<?php echo $c['id']; ?>">
+                                            <button type="submit" class="btn btn-danger btn-sm" style="border-radius: 8px; width: 38px;" title="Remover">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </form>
                                     </div>
                                 </div>
-                                <div class="input-group">
-                                    <label>Especialidade</label>
-                                    <input type="text" name="especialidade" class="input-control" 
-                                           placeholder="Ex: Psicólogo Clínico">
-                                </div>
-                                <div class="input-group">
-                                    <label>Gênero</label>
-                                    <select name="genero" class="input-control">
-                                        <option value="Masculino">Masculino</option>
-                                        <option value="Feminino">Feminino</option>
-                                        <option value="Não declarado" selected>Não declarado</option>
-                                    </select>
-                                </div>
-                                <div class="input-group">
-                                    <label>WhatsApp</label>
-                                    <input type="text" name="whatsapp" class="input-control" 
-                                           placeholder="(15) 99999-9999">
-                                </div>
-                                <div class="input-group">
-                                    <label>Nível de Permissão *</label>
-                                    <select name="role" class="input-control">
-                                        <option value="user">👤 Usuário Normal (Membro)</option>
-                                        <option value="editor">✍️ Editor (Materiais/Eventos)</option>
-                                        <option value="admin">🛡️ Administrador</option>
-                                        <option value="superadmin">👑 Super Administrador</option>
-                                    </select>
-                                    <small style="color: var(--text-muted); font-size: 0.8em; margin-top: 5px; display: block;">
-                                        <strong>Usuário:</strong> acesso à biblioteca e sugestões<br>
-                                        <strong>Admin:</strong> gerencia materiais e sugestões<br>
-                                        <strong>Super Admin:</strong> controle total do sistema
-                                    </small>
-                                </div>
-                                <button type="submit" class="btn btn-primary btn-block">
-                                    <i class="fa-solid fa-check"></i> Criar Usuário
-                                </button>
-                            </form>
+                            <?php endforeach; ?>
                         </div>
-                    </div>
+                    <?php endif; ?>
                 </div>
-
-                <!-- Modal: Editar Usuário -->
-                <div class="modal-overlay" id="modalEditarUsuario">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h2><i class="fa-solid fa-pen"></i> Editar Usuário</h2>
-                            <button class="close-modal" onclick="closeModal('modalEditarUsuario')">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <form method="POST">
-                                <input type="hidden" name="acao" value="editar_usuario">
-                                <input type="hidden" name="id_user" id="edit_user_id">
-                                <div class="input-group">
-                                    <label>Nome Completo *</label>
-                                    <input type="text" name="nome" id="edit_user_nome" class="input-control" required>
-                                </div>
-                                <div class="input-group">
-                                    <label>E-mail *</label>
-                                    <input type="email" name="email" id="edit_user_email" class="input-control" required>
-                                </div>
-                                <div class="input-group">
-                                    <label>Nova Senha (deixe vazio para manter a atual)</label>
-                                    <div class="input-password-wrapper">
-                                        <input type="password" name="nova_senha" id="edit_user_pass" class="input-control" 
-                                               placeholder="Digite apenas se quiser alterar" minlength="6">
-                                        <button type="button" class="btn-toggle-password" onclick="togglePassword(this, 'edit_user_pass')">
-                                            <i class="fa-solid fa-eye"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Especialidade</label>
-                                    <input type="text" name="especialidade" id="edit_user_especialidade" class="input-control">
-                                </div>
-                                <div class="input-group">
-                                    <label>Gênero</label>
-                                    <select name="genero" id="edit_user_genero" class="input-control">
-                                        <option value="Masculino">Masculino</option>
-                                        <option value="Feminino">Feminino</option>
-                                        <option value="Não declarado">Não declarado</option>
-                                    </select>
-                                </div>
-                                <div class="input-group">
-                                    <label>WhatsApp</label>
-                                    <input type="text" name="whatsapp" id="edit_user_whatsapp" class="input-control">
-                                </div>
-                                <div class="input-group">
-                                    <label>Nível de Permissão *</label>
-                                    <select name="role" id="edit_user_role" class="input-control">
-                                        <option value="user">👤 Usuário Normal (Membro)</option>
-                                        <option value="editor">✍️ Editor (Materiais/Eventos)</option>
-                                        <option value="admin">🛡️ Administrador</option>
-                                        <option value="superadmin">👑 Super Administrador</option>
-                                    </select>
-                                </div>
-                                <button type="submit" class="btn btn-primary btn-block">
-                                    <i class="fa-solid fa-save"></i> Salvar Alterações
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
 <?php 
 // ### PÁGINA: FÓRUM ###
 elseif ($pagina === 'forum'):
@@ -5053,6 +5013,192 @@ elseif ($pagina === 'event_report'):
         </div>
     </div>
 
+    <!-- Modais de Administração de Usuários (Global) -->
+    <!-- Modal: Criar Usuário (Premium) -->
+    <div class="modal-overlay" id="modalCriarUsuario">
+        <div class="modal-content" style="max-width: 550px; border-radius: 24px; padding: 0; overflow: hidden; border: none; box-shadow: 0 30px 60px rgba(0,0,0,0.4);">
+            <div style="background: linear-gradient(135deg, var(--primary), var(--primary-hover)); padding: 30px; color: white; position: relative;">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 15px; font-size: 1.5em; font-weight: 800;">
+                    <div style="background: rgba(255,255,255,0.2); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </div>
+                    Novo Usuário
+                </h2>
+                <p style="margin: 10px 0 0; opacity: 0.8; font-size: 0.9em; font-weight: 500;">Preencha os dados básicos para acesso à rede.</p>
+                <button class="close-modal" onclick="closeModal('modalCriarUsuario')" style="position: absolute; top: 25px; right: 25px; background: rgba(255,255,255,0.15); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body" style="padding: 30px;">
+                <form method="POST">
+                    <input type="hidden" name="acao" value="criar_usuario">
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label style="font-weight:700; font-size:0.85em; margin-bottom:8px; display:block;">Nome Completo *</label>
+                            <input type="text" name="nome" class="input-control premium-input" placeholder="Ex: Maria Silva Santos" required style="width:100%; padding:14px; border-radius:12px;">
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label style="font-weight:700; font-size:0.85em; margin-bottom:8px; display:block;">E-mail *</label>
+                            <input type="email" name="email" class="input-control premium-input" placeholder="email@exemplo.com" required style="width:100%; padding:14px; border-radius:12px;">
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label style="font-weight:700; font-size:0.85em; margin-bottom:8px; display:block;">Senha de Acesso *</label>
+                            <div style="position: relative;">
+                                <input type="password" name="senha" id="new_user_pass_v3" class="input-control premium-input" placeholder="Mínimo 6 caracteres" required style="width:100%; padding:14px; padding-right: 45px; border-radius:12px;">
+                                <button type="button" onclick="togglePassword(this, 'new_user_pass_v3')" style="position: absolute; right: 15px; top: 14px; background: none; border: none; color: var(--text-muted); cursor: pointer;">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight:700; font-size:0.85em; margin-bottom:8px; display:block;">Especialidade</label>
+                            <input type="text" name="especialidade" class="input-control premium-input" placeholder="Ex: Psicólogo" style="width:100%; padding:14px; border-radius:12px;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight:700; font-size:0.85em; margin-bottom:8px; display:block;">Gênero</label>
+                            <select name="genero" class="input-control premium-input" style="width:100%; padding:14px; border-radius:12px;">
+                                <option value="Não declarado">Não declarado</option>
+                                <option value="Masculino">Masculino</option>
+                                <option value="Feminino">Feminino</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight:700; font-size:0.85em; margin-bottom:8px; display:block;">WhatsApp</label>
+                            <input type="text" name="whatsapp" class="input-control premium-input" placeholder="(00) 00000-0000" style="width:100%; padding:14px; border-radius:12px;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight:700; font-size:0.85em; margin-bottom:8px; display:block;">Permissão *</label>
+                            <select name="role" class="input-control premium-input" required style="width:100%; padding:14px; border-radius:12px;">
+                                <option value="user" selected>👤 Membro Normal</option>
+                                <option value="editor">✍️ Editor de Conteúdo</option>
+                                <option value="admin">🛡️ Administrador</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 35px; display: flex; gap: 15px;">
+                        <button type="button" class="btn btn-outline" onclick="closeModal('modalCriarUsuario')" style="flex: 1; padding: 16px; border-radius: 14px; font-weight: 700;">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" style="flex: 2; padding: 16px; border-radius: 14px; font-weight: 800; background: linear-gradient(135deg, var(--primary), var(--primary-hover)); border: none; box-shadow: 0 10px 25px rgba(110,43,58,0.25);">
+                            <i class="fa-solid fa-user-check"></i> Criar Usuário
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Gerar Convite -->
+    <div class="modal-overlay" id="modalGerarConvite">
+        <div class="modal-content" style="max-width: 450px; border-radius: 20px;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-link"></i> Gerar Link Externo</h2>
+                <button class="close-modal" onclick="closeModal('modalGerarConvite')">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="POST">
+                    <input type="hidden" name="acao" value="gerar_convite">
+                    <div class="form-group">
+                        <label>Limite de Inscrições</label>
+                        <input type="number" name="limite" class="input-control" value="40" min="1" max="500" required style="width:100%; border-radius:10px;">
+                        <small style="color:var(--text-muted); display:block; margin-top:5px;">Máximo de inscritos permitidos para este link.</small>
+                    </div>
+                    <div class="form-group" style="margin-top:15px;">
+                        <label>Validade do Link (Duração)</label>
+                        <select name="validade_horas" class="input-control" required style="width:100%; border-radius:10px;">
+                            <option value="2">2 Horas</option>
+                            <option value="6">6 Horas</option>
+                            <option value="24" selected>24 Horas (1 dia)</option>
+                            <option value="48">48 Horas (2 dias)</option>
+                            <option value="168">7 Dias</option>
+                            <option value="720">30 Dias</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-top:15px;">
+                        <label>Nível de Acesso Padrão</label>
+                        <select name="role" class="input-control" required style="width:100%; border-radius:10px;">
+                            <option value="user" selected>Membro Normal</option>
+                            <option value="editor">Editor de Conteúdo</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 25px; display: flex; gap: 10px;">
+                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; border-radius: 12px; font-weight: 800;">
+                            <i class="fa-solid fa-plus-circle"></i> Gerar Link Externo
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Usuário -->
+    <div class="modal-overlay" id="modalEditarUsuario">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-pen"></i> Editar Usuário</h2>
+                <button class="close-modal" onclick="closeModal('modalEditarUsuario')">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="POST">
+                    <input type="hidden" name="acao" value="editar_usuario">
+                    <input type="hidden" name="id_user" id="edit_user_id">
+                    <div class="form-group">
+                        <label>Nome Completo *</label>
+                        <input type="text" name="nome" id="edit_user_nome" class="input-control" required style="width:100%;">
+                    </div>
+                    <div class="form-group" style="margin-top:15px;">
+                        <label>E-mail *</label>
+                        <input type="email" name="email" id="edit_user_email" class="input-control" required style="width:100%;">
+                    </div>
+                    <div class="form-group" style="margin-top:15px;">
+                        <label>Nova Senha (deixe vazio para manter a atual)</label>
+                        <div style="position: relative;">
+                            <input type="password" name="nova_senha" id="edit_user_pass" class="input-control" 
+                                   placeholder="Digite apenas se quiser alterar" minlength="6" style="width:100%; padding-right:40px;">
+                            <button type="button" onclick="togglePassword(this, 'edit_user_pass')" style="position:absolute; right:10px; top:12px; border:none; background:none; cursor:pointer;">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top:15px;">
+                        <label>Especialidade</label>
+                        <input type="text" name="especialidade" id="edit_user_especialidade" class="input-control" style="width:100%;">
+                    </div>
+                    <div class="form-group" style="margin-top:15px;">
+                        <label>Gênero</label>
+                        <select name="genero" id="edit_user_genero" class="input-control" style="width:100%;">
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                            <option value="Não declarado">Não declarado</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-top:15px;">
+                        <label>WhatsApp</label>
+                        <input type="text" name="whatsapp" id="edit_user_whatsapp" class="input-control" style="width:100%;">
+                    </div>
+                    <div class="form-group" style="margin-top:15px;">
+                        <label>Nível de Permissão *</label>
+                        <select name="role" id="edit_user_role" class="input-control" style="width:100%;">
+                            <option value="user">👤 Usuário Normal (Membro)</option>
+                            <option value="editor">✍️ Editor (Materiais/Eventos)</option>
+                            <option value="admin">🛡️ Administrador</option>
+                            <option value="superadmin">👑 Super Administrador</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; margin-top:20px; padding:12px; border-radius:10px;">
+                        <i class="fa-solid fa-save"></i> Salvar Alterações
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         console.log("Melodias: Scripts JS Carregados.");
         // ========================================================
@@ -5217,6 +5363,7 @@ elseif ($pagina === 'event_report'):
             if (modal) {
                 modal.classList.add('active');
                 document.body.style.overflow = 'hidden';
+                document.documentElement.classList.add('modal-active'); // Esconde sidebar/topbar
                 
                 // Hierarquia de Z-INDEX para modais sobrepostos
                 if (id === 'modalConfirmAction') {
@@ -5233,8 +5380,16 @@ elseif ($pagina === 'event_report'):
         
         function closeModal(id) {
             const modal = document.getElementById(id);
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
+            if (modal) {
+                modal.classList.remove('active');
+                
+                // Só remove o 'modal-active' se não houver outros modais abertos
+                const openModals = document.querySelectorAll('.modal-overlay.active');
+                if (openModals.length === 0) {
+                    document.body.style.overflow = '';
+                    document.documentElement.classList.remove('modal-active');
+                }
+            }
             
             // Se for o modal de preview, para o conteúdo
             if(id === 'modalPreview') {
@@ -5244,6 +5399,22 @@ elseif ($pagina === 'event_report'):
                 if(video) { video.pause(); video.src = ''; }
             }
         }
+
+        // === FUNÇÕES GLOBAIS ===
+        function copiarLink(url) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast('Copiado', 'Link copiado!', 'success');
+                }).catch(() => {
+                    const i = document.createElement('input'); i.value = url; document.body.appendChild(i); i.select(); document.execCommand('copy'); document.body.removeChild(i);
+                    showToast('Copiado', 'Link copiado!', 'success');
+                });
+            } else {
+                const i = document.createElement('input'); i.value = url; document.body.appendChild(i); i.select(); document.execCommand('copy'); document.body.removeChild(i);
+                showToast('Copiado', 'Link copiado!', 'success');
+            }
+        }
+        function copiarTexto(t) { copiarLink(t); }
 
         // === EVENTOS: FUNÇÕES GLOBAIS ===
         function confirmarPresenca(evento_id, status) {
