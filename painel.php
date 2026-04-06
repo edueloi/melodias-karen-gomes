@@ -5789,7 +5789,8 @@ elseif ($pagina === 'event_report'):
                 sugestao:   { msg: `Deseja realmente excluir esta sugestão?`, field: 'id_sugestao', acao: 'delete_sugestao' },
                 usuario:    { msg: `Você está prestes a excluir o usuário "<strong>${nome}</strong>" e todos os seus dados.`, field: 'id_user', acao: 'deletar_usuario' },
                 post_forum: { msg: `Tem certeza que deseja apagar o tópico "<strong>${nome}</strong>" e todos os comentários?`, field: 'post_id', acao: 'delete_post_forum' },
-                comentario: { msg: `Deseja excluir este comentário permanentemente?`, field: 'comentario_id', acao: 'delete_comentario' }
+                comentario: { msg: `Deseja excluir este comentário permanentemente?`, field: 'comentario_id', acao: 'delete_comentario' },
+                evento:     { msg: `Você está prestes a excluir o evento "<strong>${nome}</strong>" e todos os dados relacionados.`, field: 'id_evento', acao: 'delete_evento' }
             };
             
             const item = config[tipo] || { msg: 'Esta ação não pode ser desfeita!', field: 'id', acao: 'delete_' + tipo };
