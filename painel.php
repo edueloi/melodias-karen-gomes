@@ -6349,74 +6349,69 @@ elseif ($pagina === 'event_report'):
 
     <!-- Modal: Boas-vindas (Primeiro Acesso) Premium -->
     <div class="modal-overlay" id="modalBoasVindas" style="background: rgba(11,26,32,0.92); backdrop-filter: blur(15px); z-index: 99999;">
-        <div class="modal-content animate-pop" style="max-width: 600px; width: 95%; border: none; overflow: hidden; background: white; border-radius: 28px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); max-height: 90vh; display: flex; flex-direction: column;">
-            <div style="background: linear-gradient(135deg, var(--primary), #8B3A4D); padding: 35px 25px; text-align: center; color: white; position: relative; overflow: hidden; flex-shrink: 0;">
+        <div class="modal-content animate-pop welcome-modal-mobile-fix" style="max-width: 600px; width: 92%; border: none; overflow: hidden; background: white; border-radius: 28px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); max-height: 90vh; display: flex; flex-direction: column;">
+            <div class="welcome-header-mobile" style="background: linear-gradient(135deg, var(--primary), #8B3A4D); padding: 30px 20px; text-align: center; color: white; position: relative; overflow: hidden; flex-shrink: 0;">
                 <!-- Decorative background elements -->
                 <div style="position: absolute; top: -40px; right: -40px; width: 120px; height: 120px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
-                <div style="position: absolute; bottom: -20px; left: -20px; width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
                 
-                <div style="width: 90px; height: 90px; background: white; border-radius: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; box-shadow: 0 15px 30px rgba(0,0,0,0.2); animation: float 3s ease-in-out infinite; padding: 12px; position: relative;">
+                <div class="welcome-logo-container" style="width: 80px; height: 80px; background: white; border-radius: 22px; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.15); animation: float 3s ease-in-out infinite; padding: 10px; position: relative;">
                     <img src="images/logo-melodias.png" alt="Melodias Logo" style="max-width: 100%; height: auto; display: block;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; color: var(--primary); font-size: 2.5em;">
+                    <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; color: var(--primary); font-size: 2em;">
                         <i class="fa-solid fa-music"></i>
                     </div>
                 </div>
-                <h1 style="font-size: 1.8em; font-weight: 900; margin-bottom: 8px; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">Olá, <?php echo $primeiro_nome; ?>!</h1>
-                <p style="opacity: 0.95; font-size: 1.1em; font-weight: 500;">Seja muito bem-vindo ao <b>Universo Melodias</b></p>
+                <h1 class="welcome-title-mobile" style="font-size: 1.6em; font-weight: 900; margin-bottom: 5px; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">Olá, <?php echo $primeiro_nome; ?>!</h1>
+                <p style="opacity: 0.95; font-size: 1em; font-weight: 500;">Bem-vindo ao <b>Universo Melodias</b></p>
             </div>
             
-            <div class="modal-body" style="padding: 30px; color: var(--text-main); overflow-y: auto; flex: 1;">
-                <p style="text-align: center; margin-bottom: 30px; line-height: 1.6; color: var(--text-muted); font-size: 1em;">
-                    Estamos entusiasmados em ter você conosco! Este ecossistema foi projetado para fortalecer a nossa comunicação e ser o coração do networking do nosso grupo.
+            <div class="modal-body welcome-body-scroll" style="padding: 20px; color: var(--text-main); overflow-y: auto; flex: 1;">
+                <p style="text-align: center; margin-bottom: 25px; line-height: 1.5; color: var(--text-muted); font-size: 0.95em;">
+                    Este ecossistema foi projetado para fortalecer nossa comunicação e ser o coração do nosso networking.
                 </p>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
-                    <div class="welcome-card-feat" style="display: flex; gap: 12px; align-items: flex-start;">
-                        <div style="background: rgba(110,43,58,0.08); color: var(--primary); width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.15em;">
+                <div class="welcome-grid-mobile" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                    <div class="welcome-card-feat" style="display: flex; gap: 10px; align-items: flex-start;">
+                        <div style="background: rgba(110,43,58,0.08); color: var(--primary); width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1em;">
                             <i class="fa-solid fa-users"></i>
                         </div>
                         <div>
-                            <strong style="display: block; font-size: 0.92em; color: var(--text-main); margin-bottom: 2px;">Networking</strong>
-                            <span style="font-size: 0.82em; color: var(--text-muted); line-height: 1.4;">Conecte-se com especialistas e parcerias.</span>
+                            <strong style="display: block; font-size: 0.85em; color: var(--text-main); margin-bottom: 2px;">Networking</strong>
                         </div>
                     </div>
-                    <div class="welcome-card-feat" style="display: flex; gap: 12px; align-items: flex-start;">
-                        <div style="background: rgba(110,43,58,0.08); color: var(--primary); width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.15em;">
+                    <div class="welcome-card-feat" style="display: flex; gap: 10px; align-items: flex-start;">
+                        <div style="background: rgba(110,43,58,0.08); color: var(--primary); width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1em;">
                             <i class="fa-solid fa-comments"></i>
                         </div>
                         <div>
-                            <strong style="display: block; font-size: 0.92em; color: var(--text-main); margin-bottom: 2px;">Fórum Técnico</strong>
-                            <span style="font-size: 0.82em; color: var(--text-muted); line-height: 1.4;">Debates, técnicas e suporte técnico coletivo.</span>
+                            <strong style="display: block; font-size: 0.85em; color: var(--text-main); margin-bottom: 2px;">Fórum</strong>
                         </div>
                     </div>
-                    <div class="welcome-card-feat" style="display: flex; gap: 12px; align-items: flex-start;">
-                        <div style="background: rgba(110,43,58,0.08); color: var(--primary); width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.15em;">
+                    <div class="welcome-card-feat" style="display: flex; gap: 10px; align-items: flex-start;">
+                        <div style="background: rgba(110,43,58,0.08); color: var(--primary); width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1em;">
                             <i class="fa-solid fa-calendar-check"></i>
                         </div>
                         <div>
-                            <strong style="display: block; font-size: 0.92em; color: var(--text-main); margin-bottom: 2px;">Eventos</strong>
-                            <span style="font-size: 0.82em; color: var(--text-muted); line-height: 1.4;">Participe de encontros e cursos presenciais.</span>
+                            <strong style="display: block; font-size: 0.85em; color: var(--text-main); margin-bottom: 2px;">Eventos</strong>
                         </div>
                     </div>
-                    <div class="welcome-card-feat" style="display: flex; gap: 12px; align-items: flex-start;">
-                        <div style="background: rgba(110,43,58,0.08); color: var(--primary); width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.15em;">
+                    <div class="welcome-card-feat" style="display: flex; gap: 10px; align-items: flex-start;">
+                        <div style="background: rgba(110,43,58,0.08); color: var(--primary); width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1em;">
                             <i class="fa-solid fa-lightbulb"></i>
                         </div>
                         <div>
-                            <strong style="display: block; font-size: 0.92em; color: var(--text-main); margin-bottom: 2px;">Sugestões</strong>
-                            <span style="font-size: 0.82em; color: var(--text-muted); line-height: 1.4;">Sua opinião ajuda a moldar o futuro do grupo.</span>
+                            <strong style="display: block; font-size: 0.85em; color: var(--text-main); margin-bottom: 2px;">Sugestões</strong>
                         </div>
                     </div>
                 </div>
 
-                <div style="background: linear-gradient(to right, rgba(110,43,58,0.05), transparent); padding: 18px; border-radius: 16px; border-left: 4px solid var(--primary); margin-bottom: 30px;">
-                    <p style="font-size: 0.9em; font-weight: 600; color: var(--primary); line-height: 1.4; font-style: italic; text-align: center;">
-                        "Unidos pela excelência técnica e pelo compromisso ético com a saúde mental."
+                <div style="background: linear-gradient(to right, rgba(110,43,58,0.05), transparent); padding: 15px; border-radius: 14px; border-left: 4px solid var(--primary); margin-bottom: 25px;">
+                    <p style="font-size: 0.85em; font-weight: 600; color: var(--primary); line-height: 1.4; font-style: italic; text-align: center;">
+                        "Unidos pela excelência técnica e pelo compromisso com a saúde mental."
                     </p>
                 </div>
 
-                <button onclick="dismissWelcomeModal()" class="btn btn-primary btn-block btn-lg" style="height: 56px; border-radius: 16px; font-weight: 800; font-size: 1.1em; box-shadow: 0 10px 20px rgba(110,43,58,0.25); display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;">
-                    Iniciar Minha Experiência <i class="fa-solid fa-rocket"></i>
+                <button onclick="dismissWelcomeModal()" class="btn btn-primary btn-block btn-lg" style="height: 52px; border-radius: 14px; font-weight: 800; font-size: 1.05em; box-shadow: 0 10px 20px rgba(110,43,58,0.2); display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;">
+                    Começar Experiência <i class="fa-solid fa-rocket"></i>
                 </button>
             </div>
         </div>
@@ -6434,15 +6429,38 @@ elseif ($pagina === 'event_report'):
     .animate-pop {
         animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
+    
+    /* MOBILE OPTIMIZATIONS */
+    @media (max-width: 600px) {
+        .welcome-grid-mobile {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+        }
+        .welcome-header-mobile {
+            padding: 25px 15px !important;
+        }
+        .welcome-title-mobile {
+            font-size: 1.4em !important;
+        }
+        .welcome-logo-container {
+            width: 70px !important;
+            height: 70px !important;
+        }
+        .welcome-modal-mobile-fix {
+            width: 95% !important;
+            border-radius: 24px !important;
+        }
+    }
+    
     .welcome-card-feat {
         transition: transform 0.2s ease;
     }
     .welcome-card-feat:hover {
         transform: translateY(-2px);
     }
-    /* Estilo para a barra de rolagem interna do modal se necessário */
-    .modal-body::-webkit-scrollbar { width: 4px; }
-    .modal-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+    /* Estilo para a barra de rolagem interna do modal */
+    .welcome-body-scroll::-webkit-scrollbar { width: 4px; }
+    .welcome-body-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
     </style>
 
     <script>
