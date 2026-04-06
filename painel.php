@@ -1267,6 +1267,11 @@ $banco_desatualizado = false;
         html.modal-active {
             overflow: hidden;
         }
+        html.modal-active .sidebar,
+        html.modal-active .topbar,
+        html.modal-active .bottom-nav {
+            z-index: 0 !important;
+        }
         
         .theme-btn:hover { border-color: var(--primary); transform: rotate(20deg); color: var(--primary); background: rgba(110,43,58,0.05); }
         .mobile-toggle { display: none; margin-right: 15px; }
@@ -1463,9 +1468,9 @@ $banco_desatualizado = false;
         /* ========== MODAIS AVANÇADOS ========== */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
-            z-index: 999; display: none; justify-content: center;
-            align-items: center; animation: fadeIn 0.3s;
+            background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+            z-index: 10000; display: none; justify-content: center;
+            align-items: center; animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             padding: 16px;
         }
         .modal-overlay.active { display: flex; }
@@ -3509,160 +3514,8 @@ elseif ($pagina === 'materiais'):
                     <?php endif; ?>
                 </div>
 
-                <!-- Modal: Adicionar Material -->
-                <div class="modal-overlay" id="modalAddMaterial">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h2><i class="fa-solid fa-plus-circle"></i> Novo Material</h2>
-                            <button class="close-modal" onclick="closeModal('modalAddMaterial')">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <form method="POST" enctype="multipart/form-data">
-                                <input type="hidden" name="acao" value="add_material">
-                                 <div class="input-group">
-                                      <label>Título do Material *</label>
-                                      <input type="text" name="titulo" class="input-control" required 
-                                             placeholder="Ex: Guia de Transtornos de Ansiedade">
-                                  </div>
-                                  <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 0;">
-                                      <div class="input-group">
-                                          <label>Tipo de Conteúdo *</label>
-                                          <select name="tipo" class="input-control" required>
-                                              <option value="material">📄 Material de Apoio (PDF, Docs)</option>
-                                              <option value="ebook">📚 E-book / Guia Premium</option>
-                                              <option value="minicurso">🎬 Mini Curso / Masterclass</option>
-                                          <option value="indicacao">💡 Indicação de Estudo</option>
-                                          <option value="indicacao">💡 Indicação de Estudo</option>
-                                              <option value="indicacao">💡 Indicação de Estudo</option>
-                                          </select>
-                                      </div>
-                                      <div class="input-group">
-                                          <label>Autor / Facilitador</label>
-                                          <input type="text" name="autor" class="input-control" placeholder="Ex: Dra. Karen Gomes">
-                                      </div>
-                                  </div>
-                                  <div class="input-group">
-                                      <label>Link Externo (YouTube, Vimeo, Drive, site externo)</label>
-                                      <input type="url" name="url_externa" class="input-control" placeholder="https://youtube.com/watch?v=...">
-                                      <small style="color: var(--text-muted);">💡 Se for um vídeo ou link externo, cole aqui.</small>
-                                  </div>
-                                 <div class="input-group">
-                                     <label>Categoria *</label>
-                                     <input type="text" name="categoria" class="input-control" required 
-                                            placeholder="Ex: Psicologia Clínica">
-                                 </div>
-                                 <div class="input-group">
-                                     <label>Descrição Curta / O que será aprendido</label>
-                                     <textarea name="descricao" class="input-control" rows="3" placeholder="Uma breve descrição sobre este conteúdo..."></textarea>
-                                 </div>
-                                 <div class="input-group">
-                                     <label>Visibilidade *</label>
-                                     <select name="visibilidade" class="input-control">
-                                         <option value="todos">🌐 Público (Todos os Membros)</option>
-                                         <option value="admin">🔒 Restrito (Apenas Administradores)</option>
-                                     </select>
-                                 </div>
-                                 <div class="input-group">
-                                     <label>Arquivo do Documento (PDF, Word, Excel, etc.) *</label>
-                                     <div class="file-upload-wrapper">
-                                         <label class="file-upload-box">
-                                             <input type="file" name="arquivo" onchange="this.parentElement.querySelector('.file-name').innerText = this.files[0].name">
-                                             <i class="fa-solid fa-file-arrow-up"></i>
-                                             <span class="file-name">Clique para escolher o arquivo</span>
-                                             <span class="file-hint">Formatos suportados: PDF, DOCX, XLSX...</span>
-                                         </label>
-                                     </div>
-                                 </div>
-                                 <div class="input-group">
-                                     <label>Imagem de Capa (Opcional)</label>
-                                     <div class="file-upload-wrapper">
-                                         <label class="file-upload-box" style="padding: 16px;">
-                                             <input type="file" name="capa" accept="image/*" onchange="this.parentElement.querySelector('.file-name').innerText = this.files[0].name">
-                                             <i class="fa-solid fa-image"></i>
-                                             <span class="file-name">Escolher imagem de capa</span>
-                                             <span class="file-hint">Recomendado: imagem paisagem (JPG/PNG)</span>
-                                         </label>
-                                     </div>
-                                 </div>
-                                 <button type="submit" class="btn btn-primary btn-block">
-                                     <i class="fa-solid fa-check"></i> Salvar Material
-                                 </button>
-                             </form>
-                         </div>
-                     </div>
-                 </div>
+                <!-- Modais de Materiais movidos para o final do arquivo para melhor organização -->
 
-                 <!-- Modal: Editar Material -->
-                 <div class="modal-overlay" id="modalEditMaterial">
-                     <div class="modal-content">
-                         <div class="modal-header">
-                             <h2><i class="fa-solid fa-pen"></i> Editar Material</h2>
-                             <button class="close-modal" onclick="closeModal('modalEditMaterial')">
-                                 <i class="fa-solid fa-xmark"></i>
-                             </button>
-                         </div>
-                         <div class="modal-body">
-                             <form method="POST" enctype="multipart/form-data">
-                                 <input type="hidden" name="acao" value="edit_material">
-                                 <input type="hidden" name="id_material" id="edit_mat_id">
-                                 <div class="input-group">
-                                     <label>Título do Material *</label>
-                                     <input type="text" name="titulo" id="edit_mat_titulo" class="input-control" required>
-                                 </div>
-                                 <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 0;">
-                                     <div class="input-group">
-                                         <label>Tipo de Conteúdo *</label>
-                                         <select name="tipo" id="edit_mat_tipo" class="input-control" required>
-                                             <option value="material">📄 Material de Apoio (PDF, Docs)</option>
-                                             <option value="ebook">📚 E-book / Guia Premium</option>
-                                             <option value="minicurso">🎬 Mini Curso / Masterclass</option>
-                                             <option value="indicacao">💡 Indicação de Estudo</option>
-                                         </select>
-                                     </div>
-                                     <div class="input-group">
-                                         <label>Autor / Facilitador</label>
-                                         <input type="text" name="autor" id="edit_mat_autor" class="input-control">
-                                     </div>
-                                 </div>
-                                 <div class="input-group">
-                                     <label>Link Externo (YouTube, Vimeo, Drive...)</label>
-                                     <input type="url" name="url_externa" id="edit_mat_url_externa" class="input-control">
-                                 </div>
-                                 <div class="input-group">
-                                     <label>Categoria *</label>
-                                     <input type="text" name="categoria" id="edit_mat_categoria" class="input-control" required>
-                                 </div>
-                                 <div class="input-group">
-                                     <label>Descrição Curta / O que será aprendido</label>
-                                     <textarea name="descricao" id="edit_mat_descricao" class="input-control" rows="3"></textarea>
-                                 </div>
-                                 <div class="input-group">
-                                     <label>Visibilidade *</label>
-                                     <select name="visibilidade" id="edit_mat_visibilidade" class="input-control">
-                                         <option value="todos">🌐 Público (Todos os Membros)</option>
-                                         <option value="admin">🔒 Restrito (Apenas Administradores)</option>
-                                     </select>
-                                 </div>
-                                <div class="input-group">
-                                    <label>Nova Imagem de Capa (Opcional - Substitui a atual)</label>
-                                    <div class="file-upload-wrapper">
-                                        <label class="file-upload-box" style="padding: 16px;">
-                                            <input type="file" name="capa" accept="image/*" onchange="this.parentElement.querySelector('.file-name').innerText = this.files[0].name">
-                                            <i class="fa-solid fa-image"></i>
-                                            <span class="file-name">Escolher nova imagem de capa</span>
-                                            <span class="file-hint">Apenas envie se quiser trocar a capa atual.</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <button type="submit" class="btn btn-primary btn-block">
-                                    <i class="fa-solid fa-save"></i> Salvar Alterações
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
 
 
 
@@ -6085,8 +5938,171 @@ elseif ($pagina === 'event_report'):
     </script>
 
 
+    <!-- Modal Add Material -->
+    <div class="modal-overlay" id="modalAddMaterial">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-plus-circle"></i> Novo Material</h2>
+                <button class="close-modal" onclick="closeModal('modalAddMaterial')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body custom-scrollbar" style="max-height: 80vh; overflow-y: auto;">
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="acao" value="add_material">
+                    
+                    <div class="input-group">
+                        <label>Imagem de Capa (Opcional)</label>
+                        <div class="file-upload-wrapper">
+                            <label class="file-upload-box" for="mat_capa_add">
+                                <i class="fa-solid fa-image"></i>
+                                <span class="file-name" id="name_mat_capa_add">Escolher Capa (Padrão 1200x600)</span>
+                                <input type="file" name="capa" id="mat_capa_add" accept="image/*" onchange="document.getElementById('name_mat_capa_add').innerText = this.files[0].name" style="display:none !important;">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Título do Material *</label>
+                        <input type="text" name="titulo" class="input-control premium-input" required placeholder="Ex: Guia de Ansiedade, Ebook de Saúde Mental...">
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Tipo de Conteúdo *</label>
+                            <select name="tipo" class="input-control premium-input" required>
+                                <option value="material">📄 Apoio (PDF, Docs)</option>
+                                <option value="ebook">📚 E-book / Guia</option>
+                                <option value="minicurso">🎬 Curso / Aula</option>
+                                <option value="indicacao">💡 Indicação de Estudo</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Categoria *</label>
+                            <input type="text" name="categoria" class="input-control premium-input" required placeholder="Ex: Clínica, Infantil...">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Autor / Facilitador</label>
+                        <input type="text" name="autor" class="input-control premium-input" placeholder="Ex: Maria Silva">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Link Externo (YouTube, Drive, etc.)</label>
+                        <input type="url" name="url_externa" class="input-control premium-input" placeholder="https://...">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Descrição</label>
+                        <textarea name="descricao" class="input-control premium-input" rows="3" placeholder="O que será abordado..."></textarea>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Visibilidade *</label>
+                            <select name="visibilidade" class="input-control premium-input" required>
+                                <option value="todos">🌐 Todos os Membros</option>
+                                <option value="admin">🔒 Apenas Admin</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Upload do Arquivo *</label>
+                            <div class="file-upload-wrapper">
+                                <label class="file-upload-box" for="mat_file_add" style="padding: 10px;">
+                                    <i class="fa-solid fa-file-arrow-up" style="font-size: 1.2em; margin-bottom: 5px;"></i>
+                                    <span class="file-name" id="name_mat_file_add" style="font-size: 0.8em;">Anexar Arquivo</span>
+                                    <input type="file" name="arquivo" id="mat_file_add" onchange="document.getElementById('name_mat_file_add').innerText = this.files[0].name" style="display:none !important;">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:12px; justify-content:flex-end; margin-top: 30px;">
+                        <button type="button" class="btn btn-outline" onclick="closeModal('modalAddMaterial')">Cancelar</button>
+                        <button type="submit" class="btn btn-primary btn-lg" style="border-radius: 14px; font-weight: 800; padding: 12px 30px;"><i class="fa-solid fa-check"></i> Salvar Material</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Edit Material -->
+    <div class="modal-overlay" id="modalEditMaterial">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-pen-to-square"></i> Editar Material</h2>
+                <button class="close-modal" onclick="closeModal('modalEditMaterial')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body custom-scrollbar" style="max-height: 80vh; overflow-y: auto;">
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="acao" value="edit_material">
+                    <input type="hidden" name="id_material" id="edit_mat_id">
+                    
+                    <div class="input-group">
+                        <label>Alterar Imagem de Capa</label>
+                        <div class="file-upload-wrapper">
+                            <label class="file-upload-box" for="mat_capa_edit">
+                                <i class="fa-solid fa-image"></i>
+                                <span class="file-name" id="name_mat_capa_edit">Substituir Capa Atual</span>
+                                <input type="file" name="capa" id="mat_capa_edit" accept="image/*" onchange="document.getElementById('name_mat_capa_edit').innerText = this.files[0].name" style="display:none !important;">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Título do Material *</label>
+                        <input type="text" name="titulo" id="edit_mat_titulo" class="input-control premium-input" required>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Tipo de Conteúdo *</label>
+                            <select name="tipo" id="edit_mat_tipo" class="input-control premium-input" required>
+                                <option value="material">📄 Apoio (PDF, Docs)</option>
+                                <option value="ebook">📚 E-book / Guia</option>
+                                <option value="minicurso">🎬 Curso / Aula</option>
+                                <option value="indicacao">💡 Indicação</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Categoria *</label>
+                            <input type="text" name="categoria" id="edit_mat_categoria" class="input-control premium-input" required>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Autor / Facilitador</label>
+                        <input type="text" name="autor" id="edit_mat_autor" class="input-control premium-input">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Link Externo (URL)</label>
+                        <input type="url" name="url_externa" id="edit_mat_url_externa" class="input-control premium-input">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Descrição</label>
+                        <textarea name="descricao" id="edit_mat_descricao" class="input-control premium-input" rows="3"></textarea>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Visibilidade *</label>
+                        <select name="visibilidade" id="edit_mat_visibilidade" class="input-control premium-input" required>
+                            <option value="todos">🌐 Todos os Membros</option>
+                            <option value="admin">🔒 Apenas Admin</option>
+                        </select>
+                    </div>
+
+                    <div style="display:flex; gap:12px; justify-content:flex-end; margin-top: 30px;">
+                        <button type="button" class="btn btn-outline" onclick="closeModal('modalEditMaterial')">Cancelar</button>
+                        <button type="submit" class="btn btn-primary btn-lg" style="border-radius: 14px; font-weight: 800; padding: 12px 30px;"><i class="fa-solid fa-save"></i> Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Add Evento -->
-    <div class="modal-overlay" id="modalAddEvento" style="z-index: 9999;">
+    <div class="modal-overlay" id="modalAddEvento">
         <div class="modal-content" style="max-width: 640px;">
             <div class="modal-header">
                 <h2><i class="fa-solid fa-calendar-plus"></i> Criar Novo Encontro</h2>
@@ -6181,7 +6197,7 @@ elseif ($pagina === 'event_report'):
     </div>
 
     <!-- Modal Edit Evento -->
-    <div class="modal-overlay" id="modalEditEvento" style="z-index: 9999;">
+    <div class="modal-overlay" id="modalEditEvento">
         <div class="modal-content" style="max-width: 640px;">
             <div class="modal-header">
                 <h2><i class="fa-solid fa-calendar-pen"></i> Ajustar Encontro</h2>
@@ -6269,7 +6285,7 @@ elseif ($pagina === 'event_report'):
     </div>
 
     <!-- Modal Relatório do Evento -->
-    <div class="modal-overlay" id="modalRelatorioEvento" style="z-index: 9999;">
+    <div class="modal-overlay" id="modalRelatorioEvento">
         <div class="modal-content" style="max-width: 680px;">
             <div class="modal-header">
                 <h2><i class="fa-solid fa-chart-line"></i> Gestão do Evento</h2>
