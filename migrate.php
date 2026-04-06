@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS eventos_presenca_externa (
     whatsapp VARCHAR(30) DEFAULT NULL,
     acompanhantes INT NOT NULL DEFAULT 0,
     contribuicao_item VARCHAR(255) DEFAULT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'confirmado',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     KEY idx_evento_id (evento_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -102,12 +103,20 @@ CREATE TABLE IF NOT EXISTS eventos_presenca_externa (
     whatsapp TEXT DEFAULT NULL,
     acompanhantes INTEGER DEFAULT 0,
     contribuicao_item TEXT DEFAULT NULL,
+    status TEXT DEFAULT 'confirmado',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ";
 $results[] = runMigration($pdo, $driver,
     'CREATE TABLE eventos_presenca_externa',
     $mysql_ext, $sqlite_ext
+);
+
+// Garantir que a coluna status existe caso a tabela já tenha sido criada antes
+$results[] = runMigration($pdo, $driver,
+    'eventos_presenca_externa: coluna status',
+    "ALTER TABLE eventos_presenca_externa ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'confirmado'",
+    "ALTER TABLE eventos_presenca_externa ADD COLUMN status TEXT DEFAULT 'confirmado'"
 );
 
 // ====================================================

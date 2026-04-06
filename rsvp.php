@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Por favor, informe seu nome.";
     } else {
         try {
-            $pdo->prepare("INSERT INTO eventos_presenca_externa (evento_id, nome, whatsapp, acompanhantes, contribuicao_item) VALUES (?, ?, ?, ?, ?)")
+            $pdo->prepare("INSERT INTO eventos_presenca_externa (evento_id, nome, whatsapp, acompanhantes, contribuicao_item, status) VALUES (?, ?, ?, ?, ?, 'confirmado')")
                 ->execute([$id_evento, $nome, $whatsapp, $acompanhantes, $contribuicao]);
             $success = true;
         } catch (Exception $e) {

@@ -445,7 +445,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $rsvp_ativo = isset($_POST['rsvp_ativo']) ? 1 : 0;
             $permite_acompanhantes = isset($_POST['permite_acompanhantes']) ? 1 : 0;
             $colaborativo_ativo = isset($_POST['colaborativo_ativo']) ? 1 : 0;
-            $itens_colaborativos = sanitize($_POST['itens_colaborativos'] ?? '');
+            
+            $itens_colaborativos = '';
+            if (isset($_POST['itens_colaborativos'])) {
+                if (is_array($_POST['itens_colaborativos'])) {
+                    $itens_colaborativos = implode(', ', array_filter($_POST['itens_colaborativos'], 'strlen'));
+                } else {
+                    $itens_colaborativos = sanitize($_POST['itens_colaborativos']);
+                }
+            }
             
             // Upload Foto Evento
             $capa = '';
@@ -473,7 +481,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $rsvp_ativo = isset($_POST['rsvp_ativo']) ? 1 : 0;
             $permite_acompanhantes = isset($_POST['permite_acompanhantes']) ? 1 : 0;
             $colaborativo_ativo = isset($_POST['colaborativo_ativo']) ? 1 : 0;
-            $itens_colaborativos = sanitize($_POST['itens_colaborativos'] ?? '');
+            
+            $itens_colaborativos = '';
+            if (isset($_POST['itens_colaborativos'])) {
+                if (is_array($_POST['itens_colaborativos'])) {
+                    $itens_colaborativos = implode(', ', array_filter($_POST['itens_colaborativos'], 'strlen'));
+                } else {
+                    $itens_colaborativos = sanitize($_POST['itens_colaborativos']);
+                }
+            }
             
             $update_capa_sql = "";
             $params = [$titulo, $descricao, $data_evento, $local, $mapa_link, $rsvp_ativo, $permite_acompanhantes, $colaborativo_ativo, $itens_colaborativos];
@@ -3941,7 +3957,7 @@ elseif ($pagina === 'usuarios'):
                                 </td>
                                 <td style="text-align: right;">
                                     <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                                        <button onclick='editarUsuario(<?php echo htmlspecialchars(json_encode($u), ENT_QUOTES, "UTF-8"); ?>)' 
+                                        <button onclick='editarUsuario(<?php echo htmlspecialchars(json_encode($u, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, "UTF-8"); ?>)' 
                                                 class="btn btn-outline btn-icon btn-sm" title="Editar">
                                             <i class="fa-solid fa-pen"></i>
                                         </button>
@@ -4201,7 +4217,7 @@ elseif ($pagina === 'forum'):
         <span class="post-badge"><?php echo $cat['icon'].' '.$cat['label']; ?></span>
         
         <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN): ?>
-        <button type="button" onclick="confirmarDelete('post_forum', <?php echo $post['id']; ?>, <?php echo htmlspecialchars(json_encode($post['titulo'])); ?>)" class="btn btn-danger btn-sm" title="Apagar Tópico">
+        <button type="button" onclick="confirmarDelete('post_forum', <?php echo $post['id']; ?>, <?php echo htmlspecialchars(json_encode($post['titulo'], JSON_HEX_APOS | JSON_HEX_QUOT)); ?>)" class="btn btn-danger btn-sm" title="Apagar Tópico">
             <i class="fa-solid fa-trash"></i> Apagar
         </button>
         <?php endif; ?>
@@ -4264,7 +4280,7 @@ elseif ($pagina === 'forum'):
                         
                         <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $c['user_id'] == $id_usuario): ?>
                             <div class="comment-actions" style="display:flex; gap:5px;">
-                                <button onclick='abrirEditarComentario(<?php echo $c['id']; ?>, <?php echo htmlspecialchars(json_encode($c['comentario'])); ?>)' class="btn-icon" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.8em;" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick='abrirEditarComentario(<?php echo $c['id']; ?>, <?php echo htmlspecialchars(json_encode($c['comentario'], JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, "UTF-8"); ?>)' class="btn-icon" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.8em;" title="Editar"><i class="fa-solid fa-pen"></i></button>
                                 <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN): ?>
                                     <button onclick="confirmarDelete('comentario', <?php echo $c['id']; ?>)" class="btn-icon" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:0.8em;" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                                 <?php endif; ?>
@@ -4483,7 +4499,7 @@ function abrirEditarComentario(id, texto) {
         
         <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN): ?>
         <div class="fcard-admin-action" onclick="event.stopPropagation();">
-            <button type="button" onclick="confirmarDelete('post_forum', <?php echo $post['id']; ?>, <?php echo htmlspecialchars(json_encode($post['titulo'])); ?>)" class="btn btn-danger btn-sm" style="padding: 4px 8px; border-radius: 8px;" title="Apagar Tópico">
+            <button type="button" onclick="confirmarDelete('post_forum', <?php echo $post['id']; ?>, <?php echo htmlspecialchars(json_encode($post['titulo'], JSON_HEX_APOS | JSON_HEX_QUOT)); ?>)" class="btn btn-danger btn-sm" style="padding: 4px 8px; border-radius: 8px;" title="Apagar Tópico">
                 <i class="fa-solid fa-trash"></i>
             </button>
         </div>
@@ -4582,7 +4598,7 @@ elseif ($pagina === 'eventos'):
                 <div style="background: <?php echo empty($ev['capa']) ? 'linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%)' : 'rgba(255,255,255,0.05)'; ?>; padding: <?php echo empty($ev['capa']) ? '20px' : '15px 20px 20px 20px'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-main)'; ?>; position: relative; border-bottom: <?php echo empty($ev['capa']) ? 'none' : '1px solid var(--border)'; ?>;">
                     <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 8px;">
                         <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $role === ROLE_EDITOR): ?>
-                        <button onclick='abrirEditarEvento(<?php echo json_encode($ev); ?>)' class="btn btn-sm" style="border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: <?php echo empty($ev['capa']) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.05)'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-muted)'; ?>;" title="Editar Evento">
+                        <button onclick='abrirEditarEvento(<?php echo htmlspecialchars(json_encode($ev, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, "UTF-8"); ?>)' class="btn btn-sm" style="border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: <?php echo empty($ev['capa']) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.05)'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-muted)'; ?>;" title="Editar Evento">
                             <i class="fa-solid fa-pen"></i>
                         </button>
                         <button onclick='abrirRelatorio(<?php echo $ev['id']; ?>)' class="btn btn-sm" style="border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: <?php echo empty($ev['capa']) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.05)'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-muted)'; ?>;" title="Ver Relatório">
@@ -4608,18 +4624,34 @@ elseif ($pagina === 'eventos'):
                     <p style="font-size: 0.9em; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; flex: 1; white-space: pre-wrap;"><?php echo htmlspecialchars($ev['descricao'] ?? ''); ?></p>
                     
                     <?php 
-                        // Totais
-                        $stmt_total = $pdo->prepare("SELECT COUNT(*) as total, SUM(acompanhantes) as extras FROM eventos_presenca WHERE evento_id = ? AND status = 'confirmado'");
-                        $stmt_total->execute([$ev['id']]);
-                        $totais = $stmt_total->fetch();
-                        $presencas_total = (int)$totais['total'];
-                        $pessoas_total = $presencas_total + (int)$totais['extras'];
+                        try {
+                            // Totais Internos
+                            $stmt_total = $pdo->prepare("SELECT COUNT(*) as total, SUM(acompanhantes) as extras FROM eventos_presenca WHERE evento_id = ? AND status = 'confirmado'");
+                            $stmt_total->execute([$ev['id']]);
+                            $totais = $stmt_total->fetch();
+                            
+                            // Totais Externos
+                            $stmt_ext = $pdo->prepare("SELECT COUNT(*) as total, SUM(acompanhantes) as extras FROM eventos_presenca_externa WHERE evento_id = ? AND status = 'confirmado'");
+                            $stmt_ext->execute([$ev['id']]);
+                            $ext = $stmt_ext->fetch();
+
+                            $presencas_total = (int)($totais['total'] ?? 0) + (int)($ext['total'] ?? 0);
+                            $pessoas_total = $presencas_total + (int)($totais['extras'] ?? 0) + (int)($ext['extras'] ?? 0);
+                        } catch (Exception $e) {
+                            $presencas_total = 0;
+                            $pessoas_total = 0;
+                        }
                         
-                        $status_user_row = $pdo->prepare("SELECT status, acompanhantes FROM eventos_presenca WHERE evento_id = ? AND user_id = ?");
-                        $status_user_row->execute([$ev['id'], $id_usuario]);
-                        $meu_status = $status_user_row->fetch();
-                        $status_user = $meu_status['status'] ?? null;
-                        $meus_acompanhantes = $meu_status['acompanhantes'] ?? 0;
+                        try {
+                            $status_user_row = $pdo->prepare("SELECT status, acompanhantes FROM eventos_presenca WHERE evento_id = ? AND user_id = ?");
+                            $status_user_row->execute([$ev['id'], $id_usuario]);
+                            $meu_status = $status_user_row->fetch();
+                            $status_user = $meu_status['status'] ?? null;
+                            $meus_acompanhantes = $meu_status['acompanhantes'] ?? 0;
+                        } catch (Exception $e) {
+                            $status_user = null;
+                            $meus_acompanhantes = 0;
+                        }
                     ?>
                     
                     <!-- Widgets de Estatísticas Rápidas -->
@@ -4795,7 +4827,7 @@ elseif ($pagina === 'event_report'):
                     <td style="padding:10px; text-align:right;">
                         <div style="display:flex; justify-content:flex-end; gap:6px;">
                             <a href="https://wa.me/<?php echo preg_replace('/[^0-9]/','',$p['whatsapp']); ?>" target="_blank" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px; display:inline-flex; align-items:center; height:32px;" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
-                            <button onclick="deletarPresenca('interna', <?php echo $p['id']; ?>, '<?php echo addslashes($p['nome']); ?>')" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px; color:var(--danger); border-color:#fee2e2; display:inline-flex; align-items:center; height:32px;" title="Excluir"><i class="fa-solid fa-trash-can"></i></button>
+                            <button onclick='deletarPresenca("interna", <?php echo $p["id"]; ?>, <?php echo htmlspecialchars(json_encode($p["nome"]), ENT_QUOTES, "UTF-8"); ?>)' class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px; color:var(--danger); border-color:#fee2e2; display:inline-flex; align-items:center; height:32px;" title="Excluir"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
                     </td>
                 </tr>
@@ -4811,7 +4843,7 @@ elseif ($pagina === 'event_report'):
                     <td style="padding:10px; text-align:right;">
                         <div style="display:flex; justify-content:flex-end; gap:6px;">
                             <a href="https://wa.me/<?php echo preg_replace('/[^0-9]/','',$ext['whatsapp']); ?>" target="_blank" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px; display:inline-flex; align-items:center; height:32px;" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
-                            <button onclick="deletarPresenca('externa', <?php echo $ext['id']; ?>, '<?php echo addslashes($ext['nome']); ?>')" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px; color:var(--danger); border-color:#fee2e2; display:inline-flex; align-items:center; height:32px;" title="Excluir"><i class="fa-solid fa-trash-can"></i></button>
+                            <button onclick='deletarPresenca("externa", <?php echo $ext["id"]; ?>, <?php echo htmlspecialchars(json_encode($ext["nome"]), ENT_QUOTES, "UTF-8"); ?>)' class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px; color:var(--danger); border-color:#fee2e2; display:inline-flex; align-items:center; height:32px;" title="Excluir"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
                     </td>
                 </tr>
@@ -5003,18 +5035,18 @@ elseif ($pagina === 'event_report'):
 
 
     <!-- Modal de Confirmação Genérico (Premium) -->
-    <div class="modal-overlay" id="modalConfirmAction">
-        <div class="confirm-dialog anim-fade">
+    <div class="modal-overlay" id="modalConfirmAction" style="justify-content: center; align-items: center;">
+        <div class="confirm-dialog anim-fade" style="width: 100%; max-width: 420px; margin: 20px;">
             <div id="confirmActionIcon" class="icon-warning" style="font-size: 3.5em; margin-bottom: 20px;">
                 <i class="fa-solid fa-triangle-exclamation"></i>
             </div>
             <h3 id="confirmActionTitle" style="font-size: 1.6em; font-weight: 800; margin-bottom: 12px;">Tem Certeza?</h3>
             <p id="confirmActionMessage" style="color: var(--text-muted); margin-bottom: 30px; line-height: 1.6; font-size: 0.95em;">Esta ação não pode ser desfeita!</p>
-            <div class="btn-group" style="display: flex; gap: 12px; justify-content: center; width: 100%;">
-                <button class="btn btn-outline" onclick="closeModal('modalConfirmAction')" style="flex: 1; justify-content: center;">
+            <div class="btn-group" style="display: flex; gap: 12px; justify-content: center; width: 100%; flex-wrap: wrap;">
+                <button class="btn btn-outline" onclick="closeModal('modalConfirmAction')" style="flex: 1; min-width: 140px; justify-content: center;">
                     <i class="fa-solid fa-xmark"></i> Cancelar
                 </button>
-                <button class="btn" id="confirmActionBtn" style="flex: 1; justify-content: center;">
+                <button class="btn" id="confirmActionBtn" style="flex: 1; min-width: 140px; justify-content: center;">
                     <i class="fa-solid fa-check"></i> Confirmar
                 </button>
             </div>
@@ -5022,6 +5054,7 @@ elseif ($pagina === 'event_report'):
     </div>
 
     <script>
+        console.log("Melodias: Scripts JS Carregados.");
         // ========================================================
         // JAVASCRIPT - SISTEMA COMPLETO
         // ========================================================
@@ -5184,6 +5217,17 @@ elseif ($pagina === 'event_report'):
             if (modal) {
                 modal.classList.add('active');
                 document.body.style.overflow = 'hidden';
+                
+                // Hierarquia de Z-INDEX para modais sobrepostos
+                if (id === 'modalConfirmAction') {
+                    modal.style.zIndex = '10002'; // Acima de tudo
+                } else if (id === 'modalRelatorioEvento') {
+                    modal.style.zIndex = '10001'; // Segunda camada
+                } else {
+                    modal.style.zIndex = '10000'; // Base
+                }
+                
+                console.log("Abrindo Modal: " + id);
             }
         }
         
@@ -5289,7 +5333,24 @@ elseif ($pagina === 'event_report'):
             const colab = parseInt(ev.colaborativo_ativo) === 1;
             if (colabEl) colabEl.checked = colab;
             if (colabOpt) colabOpt.style.display = colab ? 'block' : 'none';
-            if (itensEl) itensEl.value = ev.itens_colaborativos || '';
+            
+            // Popular itens dinâmicos
+            const container = document.getElementById('edit_items_container');
+            if (container) {
+                container.innerHTML = '';
+                const itens = (ev.itens_colaborativos || '').split(',').map(i => i.trim()).filter(i => i !== '');
+                if (itens.length === 0) {
+                    addItemToCollab('edit_items_container');
+                } else {
+                    itens.forEach(item => {
+                        const div = document.createElement('div');
+                        div.style.display = 'flex';
+                        div.style.gap = '8px';
+                        div.innerHTML = `<input type="text" name="itens_colaborativos[]" class="input-control premium-input" value="${item}" placeholder="Ex: Café, Bolo..."><button type="button" onclick="removeItemFromCollab(this)" class="btn btn-outline" style="padding:8px 12px; color:var(--danger); border-color:#fee2e2;"><i class="fa-solid fa-trash-can"></i></button>`;
+                        container.appendChild(div);
+                    });
+                }
+            }
             openModal('modalEditEvento');
         }
 
@@ -5377,6 +5438,27 @@ elseif ($pagina === 'event_report'):
                     f.submit();
                 }
             });
+        }
+        
+        function addItemToCollab(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.gap = '8px';
+            div.innerHTML = `<input type="text" name="itens_colaborativos[]" class="input-control premium-input" placeholder="Novo item..."><button type="button" onclick="removeItemFromCollab(this)" class="btn btn-outline" style="padding:8px 12px; color:var(--danger); border-color:#fee2e2;"><i class="fa-solid fa-trash-can"></i></button>`;
+            container.appendChild(div);
+            // Focus no novo input
+            div.querySelector('input').focus();
+        }
+
+        function removeItemFromCollab(btn) {
+            const container = btn.parentElement.parentElement;
+            if (container.children.length > 1) {
+                btn.parentElement.remove();
+            } else {
+                btn.parentElement.querySelector('input').value = '';
+            }
         }
 
         // === PREVIEW DE MATERIAL (LER ONLINE) ===
@@ -5856,8 +5938,16 @@ elseif ($pagina === 'event_report'):
                         </div>
 
                         <div id="colab_options_add_v2" style="display:none; margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
-                            <label style="font-size:0.85em; font-weight:700; display:block; margin-bottom:8px;">Itens para contribuição (separados por vírgula):</label>
-                            <textarea name="itens_colaborativos" class="input-control premium-input" rows="2" placeholder="Ex: Café, Bolo, Pão, Suco, Frutas..."></textarea>
+                            <label style="font-size:0.85em; font-weight:700; display:block; margin-bottom:8px;">Itens para contribuição:</label>
+                            <div id="add_items_container" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+                                <div style="display:flex; gap:8px;">
+                                    <input type="text" name="itens_colaborativos[]" class="input-control premium-input" placeholder="Ex: Café, Bolo, etc">
+                                    <button type="button" onclick="removeItemFromCollab(this)" class="btn btn-outline" style="padding:8px 12px; color:var(--danger); border-color:#fee2e2;"><i class="fa-solid fa-trash-can"></i></button>
+                                </div>
+                            </div>
+                            <button type="button" onclick="addItemToCollab('add_items_container')" class="btn btn-outline btn-sm" style="width:100%; border-style:dashed;">
+                                <i class="fa-solid fa-plus-circle"></i> Adicionar Outro Item
+                            </button>
                         </div>
                     </div>
 
@@ -5939,8 +6029,13 @@ elseif ($pagina === 'event_report'):
                             </label>
                         </div>
                         <div id="colab_options_edit_v2" style="display:none; margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
-                            <label style="font-size:0.85em; font-weight:700;">Itens para contribuição:</label>
-                            <textarea name="itens_colaborativos" id="edit_ev_itens" class="input-control premium-input" rows="2"></textarea>
+                            <label style="font-size:0.85em; font-weight:700; display:block; margin-bottom:8px;">Itens para contribuição:</label>
+                            <div id="edit_items_container" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+                                <!-- Gerado via JS -->
+                            </div>
+                            <button type="button" onclick="addItemToCollab('edit_items_container')" class="btn btn-outline btn-sm" style="width:100%; border-style:dashed;">
+                                <i class="fa-solid fa-plus-circle"></i> Adicionar Outro Item
+                            </button>
                         </div>
                     </div>
 
