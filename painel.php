@@ -1796,8 +1796,11 @@ $banco_desatualizado = false;
             .modal-header h2 { font-size: 0.98em; }
             .modal-body { padding: 14px 16px; }
             .modal-footer { flex-direction: column; }
-            .modal-footer .btn { width: 100%; justify-content: center; }
         }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(110,43,58,0.2); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(110,43,58,0.4); }
     </style>
 </head>
 <body>
@@ -4548,120 +4551,111 @@ elseif ($pagina === 'eventos'):
 
     <div class="grid-cards" style="margin-top: 25px;">
         <?php if(count($eventos) > 0): foreach($eventos as $ev): ?>
-            <div class="card event-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.3s ease;">
+            <div class="card event-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.3s ease; height: 100%; min-height: 520px; max-height: 750px; background: white;">
                 <?php if(!empty($ev['capa']) && file_exists($ev['capa'])): ?>
-                    <div style="width: 100%; min-height: 200px; max-height: 280px; overflow: hidden; position: relative; background: #000; display: flex; align-items: center; justify-content: center;">
+                    <div style="width: 100%; height: 180px; min-height: 180px; overflow: hidden; position: relative; background: #000; display: flex; align-items: center; justify-content: center;">
                         <img src="<?php echo htmlspecialchars($ev['capa']); ?>" style="width: 100%; height: 100%; object-fit: contain; position: relative; z-index: 2;" alt="Capa do Evento">
                         <div style="position: absolute; inset: 0; background-image: url('<?php echo htmlspecialchars($ev['capa']); ?>'); background-size: cover; background-position: center; filter: blur(20px) brightness(0.4); opacity: 0.7; transform: scale(1.2);"></div>
                         <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%); z-index: 3;"></div>
                     </div>
+                <?php else: ?>
+                    <div style="width: 100%; height: 80px; min-height: 80px; background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%); position: relative;">
+                        <div style="position: absolute; inset: 0; background: url('images/pattern.png'); opacity: 0.1; mix-blend-mode: overlay;"></div>
+                    </div>
                 <?php endif; ?>
-                <div style="background: <?php echo empty($ev['capa']) ? 'linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%)' : 'rgba(255,255,255,0.05)'; ?>; padding: <?php echo empty($ev['capa']) ? '20px' : '15px 20px 20px 20px'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-main)'; ?>; position: relative; border-bottom: <?php echo empty($ev['capa']) ? 'none' : '1px solid var(--border)'; ?>;">
-                    <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 8px;">
+
+                <div style="padding: 20px; border-bottom: 1px solid var(--border); position: relative; background: <?php echo empty($ev['capa']) ? 'transparent' : 'rgba(0,0,0,0.02)'; ?>;">
+                    <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; z-index: 5;">
                         <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $role === ROLE_EDITOR): ?>
-                        <button onclick='abrirEditarEvento(<?php echo htmlspecialchars(json_encode($ev, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, "UTF-8"); ?>)' class="btn btn-sm" style="border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: <?php echo empty($ev['capa']) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.05)'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-muted)'; ?>;" title="Editar Evento">
-                            <i class="fa-solid fa-pen"></i>
+                        <button onclick='abrirEditarEvento(<?php echo htmlspecialchars(json_encode($ev, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, "UTF-8"); ?>)' class="btn btn-sm" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; background: white; border: 1px solid var(--border); color: var(--text-muted); box-shadow: 0 2px 5px rgba(0,0,0,0.05);" title="Editar Evento">
+                            <i class="fa-solid fa-pen" style="font-size: 0.85em;"></i>
                         </button>
-                        <button onclick='abrirRelatorio(<?php echo $ev['id']; ?>)' class="btn btn-sm" style="border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: <?php echo empty($ev['capa']) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.05)'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-muted)'; ?>;" title="Ver Relatório">
-                            <i class="fa-solid fa-chart-pie"></i>
+                        <button onclick='abrirRelatorio(<?php echo $ev['id']; ?>)' class="btn btn-sm" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; background: white; border: 1px solid var(--border); color: var(--text-muted); box-shadow: 0 2px 5px rgba(0,0,0,0.05);" title="Ver Relatório">
+                            <i class="fa-solid fa-chart-pie" style="font-size: 0.85em;"></i>
                         </button>
-                        <button onclick='copiarLinkPublico(<?php echo $ev['id']; ?>)' class="btn btn-sm" style="border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: <?php echo empty($ev['capa']) ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.05)'; ?>; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-muted)'; ?>;" title="Copiar Link Público">
-                            <i class="fa-solid fa-link"></i>
+                        <button onclick='copiarLinkPublico(<?php echo $ev['id']; ?>)' class="btn btn-sm" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; background: white; border: 1px solid var(--border); color: var(--text-muted); box-shadow: 0 2px 5px rgba(0,0,0,0.05);" title="Copiar Link Público">
+                            <i class="fa-solid fa-link" style="font-size: 0.85em;"></i>
                         </button>
-                        <button onclick="confirmarDelete('evento', <?php echo $ev['id']; ?>, '<?php echo addslashes($ev['titulo']); ?>')" class="btn btn-danger btn-sm" style="border-radius: 50%; width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(239, 68, 68, 0.8);" title="Excluir Evento">
-                            <i class="fa-solid fa-trash"></i>
+                        <button onclick="confirmarDelete('evento', <?php echo $ev['id']; ?>, '<?php echo addslashes($ev['titulo']); ?>')" class="btn btn-danger btn-sm" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; background: #ef4444; color: white; border: none; box-shadow: 0 2px 5px rgba(239,68,68,0.2);" title="Excluir Evento">
+                            <i class="fa-solid fa-trash" style="font-size: 0.85em;"></i>
                         </button>
                         <?php endif; ?>
                     </div>
-                    <h3 style="margin: 0; font-size: 1.3em; font-weight: 800; padding-right: 120px; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--primary)'; ?>;"><?php echo htmlspecialchars($ev['titulo']); ?></h3>
-                    <div style="font-size: 0.85em; margin-top: 10px; opacity: 0.9; display: flex; gap: 15px; flex-wrap: wrap; color: <?php echo empty($ev['capa']) ? 'white' : 'var(--text-muted)'; ?>;">
-                        <span style="display: flex; align-items: center; gap: 5px;"><i class="fa-regular fa-calendar"></i> <?php echo date('d/m/Y \à\s H:i', strtotime($ev['data_evento'])); ?></span>
+                    <h3 style="margin: 0; font-size: 1.2em; font-weight: 800; padding-right: 140px; color: var(--primary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"><?php echo htmlspecialchars($ev['titulo']); ?></h3>
+                    <div style="font-size: 0.8em; margin-top: 8px; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
+                        <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-regular fa-calendar" style="color: var(--primary);"></i> <?php echo date('d/m/Y \à\s H:i', strtotime($ev['data_evento'])); ?></span>
                         <?php if(!empty($ev['local'])): ?>
-                            <span style="display: flex; align-items: center; gap: 5px;"><i class="fa-solid fa-location-dot"></i> <?php echo htmlspecialchars($ev['local']); ?></span>
+                            <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-location-dot" style="color: var(--primary);"></i> <?php echo htmlspecialchars($ev['local']); ?></span>
                         <?php endif; ?>
                     </div>
                 </div>
-                <div style="padding: 20px; flex: 1; display: flex; flex-direction: column;">
-                    <p style="font-size: 0.9em; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; flex: 1; white-space: pre-wrap;"><?php echo htmlspecialchars($ev['descricao'] ?? ''); ?></p>
+
+                <div style="padding: 15px 20px; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                    <p style="font-size: 0.88em; color: var(--text-muted); line-height: 1.5; margin-bottom: 15px; flex-shrink: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;"><?php echo htmlspecialchars($ev['descricao'] ?? ''); ?></p>
                     
                     <?php 
                         try {
-                            // Totais Internos
                             $stmt_total = $pdo->prepare("SELECT COUNT(*) as total, SUM(acompanhantes) as extras FROM eventos_presenca WHERE evento_id = ? AND status = 'confirmado'");
                             $stmt_total->execute([$ev['id']]);
                             $totais = $stmt_total->fetch();
-                            
-                            // Totais Externos
                             $stmt_ext = $pdo->prepare("SELECT COUNT(*) as total, SUM(acompanhantes) as extras FROM eventos_presenca_externa WHERE evento_id = ? AND status = 'confirmado'");
                             $stmt_ext->execute([$ev['id']]);
                             $ext = $stmt_ext->fetch();
-
                             $presencas_total = (int)($totais['total'] ?? 0) + (int)($ext['total'] ?? 0);
                             $pessoas_total = $presencas_total + (int)($totais['extras'] ?? 0) + (int)($ext['extras'] ?? 0);
-                        } catch (Exception $e) {
-                            $presencas_total = 0;
-                            $pessoas_total = 0;
-                        }
-                        
-                        try {
                             $status_user_row = $pdo->prepare("SELECT status, acompanhantes FROM eventos_presenca WHERE evento_id = ? AND user_id = ?");
                             $status_user_row->execute([$ev['id'], $id_usuario]);
                             $meu_status = $status_user_row->fetch();
                             $status_user = $meu_status['status'] ?? null;
                             $meus_acompanhantes = $meu_status['acompanhantes'] ?? 0;
                         } catch (Exception $e) {
-                            $status_user = null;
-                            $meus_acompanhantes = 0;
+                            $presencas_total = 0; $pessoas_total = 0; $status_user = null; $meus_acompanhantes = 0;
                         }
                     ?>
                     
-                    <!-- Widgets de Estatísticas Rápidas -->
-                    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 120px; background: rgba(110,43,58,0.05); padding: 10px; border-radius: 10px; text-align: center; border: 1px solid rgba(110,43,58,0.1);">
-                            <span style="display: block; font-size: 0.7em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">Confirmados</span>
-                            <span style="font-size: 1.2em; font-weight: 800; color: var(--primary);"><?php echo $presencas_total; ?></span>
+                    <!-- Stats compactos -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-shrink: 0;">
+                        <div style="flex: 1; background: #f8fafc; padding: 8px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
+                            <span style="display: block; font-size: 0.65em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Confirmados</span>
+                            <span style="font-size: 1.1em; font-weight: 800; color: var(--primary);"><?php echo $presencas_total; ?></span>
                         </div>
-                        <div style="flex: 1; min-width: 120px; background: rgba(16,185,129,0.05); padding: 10px; border-radius: 10px; text-align: center; border: 1px solid rgba(16,185,129,0.1);">
-                            <span style="display: block; font-size: 0.7em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">Total Pessoas</span>
-                            <span style="font-size: 1.2em; font-weight: 800; color: #10b981;"><?php echo $pessoas_total; ?></span>
+                        <div style="flex: 1; background: #f0fdf4; padding: 8px; border-radius: 10px; text-align: center; border: 1px solid #dcfce7;">
+                            <span style="display: block; font-size: 0.65em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Total</span>
+                            <span style="font-size: 1.1em; font-weight: 800; color: #166534;"><?php echo $pessoas_total; ?></span>
                         </div>
                     </div>
 
                     <?php if($ev['colaborativo_ativo']): ?>
-                        <div style="margin-bottom: 20px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 15px;">
-                            <h4 style="font-size: 0.85em; color: #92400e; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-mug-hot"></i> Contribuições para o Evento</h4>
-                            
-                            <?php 
-                                $itens = array_filter(array_map('trim', explode(',', $ev['itens_colaborativos'])));
-                                $contribuicoes = $pdo->prepare("SELECT ec.*, p.nome FROM eventos_contribuicoes ec JOIN profissionais p ON ec.user_id = p.id WHERE ec.evento_id = ?");
-                                $contribuicoes->execute([$ev['id']]);
-                                $lista_contribuicoes = $contribuicoes->fetchAll();
-                                
-                                $meus_itens = [];
-                                $distribuicao = [];
-                                foreach($lista_contribuicoes as $ct) {
-                                    $distribuicao[$ct['item_nome']][] = explode(' ', $ct['nome'])[0];
-                                    if($ct['user_id'] == $id_usuario) $meus_itens[] = $ct['item_nome'];
-                                }
-                            ?>
-
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 12px; margin-bottom: 15px; flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 100px;">
+                            <h4 style="font-size: 0.8em; color: #92400e; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; flex-shrink: 0;"><i class="fa-solid fa-mug-hot"></i> Itens Colaborativos</h4>
+                            <div style="overflow-y: auto; flex: 1; padding-right: 5px;" class="custom-scrollbar">
+                                <?php 
+                                    $itens = array_filter(array_map('trim', explode(',', $ev['itens_colaborativos'])));
+                                    $contribuicoes = $pdo->prepare("SELECT ec.*, p.nome FROM eventos_contribuicoes ec JOIN profissionais p ON ec.user_id = p.id WHERE ec.evento_id = ?");
+                                    $contribuicoes->execute([$ev['id']]);
+                                    $lista_contribuicoes = $contribuicoes->fetchAll();
+                                    $meus_itens = []; $distribuicao = [];
+                                    foreach($lista_contribuicoes as $ct) {
+                                        $distribuicao[$ct['item_nome']][] = explode(' ', $ct['nome'])[0];
+                                        if($ct['user_id'] == $id_usuario) $meus_itens[] = $ct['item_nome'];
+                                    }
+                                ?>
                                 <?php foreach($itens as $it): 
                                     $estou_levando = in_array($it, $meus_itens);
                                     $quem_leva = $distribuicao[$it] ?? [];
                                 ?>
-                                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85em;">
-                                        <div style="display: flex; flex-direction: column;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8em; padding: 4px 0; border-bottom: 1px solid rgba(146,64,14,0.05);">
+                                        <div style="display: flex; flex-direction: column; max-width: 60%;">
                                             <span style="font-weight: 700; color: #451a03;"><?php echo htmlspecialchars($it); ?></span>
-                                            <span style="font-size: 0.8em; color: #92400e;">
-                                                <?php echo empty($quem_leva) ? '<i>Ninguém ainda</i>' : implode(', ', $quem_leva); ?>
+                                            <span style="font-size: 0.75em; color: #92400e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <?php echo empty($quem_leva) ? '<i>Ninguém</i>' : implode(', ', $quem_leva); ?>
                                             </span>
                                         </div>
                                         <?php if($status_user === 'confirmado'): ?>
                                             <button onclick="toggleContribuicao(<?php echo $ev['id']; ?>, '<?php echo addslashes($it); ?>', '<?php echo $estou_levando ? 'remover' : 'adicionar'; ?>')" 
                                                     class="btn btn-sm <?php echo $estou_levando ? 'btn-success' : 'btn-outline'; ?>" 
-                                                    style="padding: 4px 10px; border-radius: 20px; font-size: 0.8em;">
-                                                <?php echo $estou_levando ? '<i class="fa-solid fa-check"></i> Vou levar' : '+ Levar'; ?>
+                                                    style="padding: 2px 8px; border-radius: 12px; font-size: 0.75em; border-width: 1px;">
+                                                <?php echo $estou_levando ? 'Levando' : '+ Item'; ?>
                                             </button>
                                         <?php endif; ?>
                                     </div>
@@ -4670,45 +4664,35 @@ elseif ($pagina === 'eventos'):
                         </div>
                     <?php endif; ?>
                     
-                    <div style="margin-top: auto;">
+                    <div style="margin-top: auto; flex-shrink: 0;">
                         <?php if($ev['rsvp_ativo']): ?>
                             <?php if($status_user === 'confirmado'): ?>
-                                <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); border-radius: 12px; padding: 15px; margin-bottom: 10px;">
-                                    <div style="display: flex; align-items: center; gap: 10px; color: #065f46; font-weight: 700; font-size: 0.9em; margin-bottom: 10px;">
-                                        <i class="fa-solid fa-circle-check"></i> Presença Confirmada!
+                                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px; text-align: center;">
+                                    <div style="color: #166534; font-weight: 700; font-size: 0.85em; margin-bottom: 8px;">
+                                        <i class="fa-solid fa-circle-check"></i> Você vai!
+                                        <?php if($meus_acompanhantes > 0): ?> <small>(+<?php echo $meus_acompanhantes; ?>)</small> <?php endif; ?>
                                     </div>
-                                    
-                                    <?php if($ev['permite_acompanhantes']): ?>
-                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85em; color: #065f46;">
-                                            <span>Acompanhantes:</span>
-                                            <div style="display: flex; align-items: center; gap: 10px;">
-                                                <button onclick="updateAcompanhantes(<?php echo $ev['id']; ?>, <?php echo max(0, $meus_acompanhantes - 1); ?>)" class="btn-icon" style="background: white; border: 1px solid #10b981; color: #10b981; width: 24px; height: 24px; border-radius: 4px; cursor: pointer;">-</button>
-                                                <strong style="min-width: 20px; text-align: center;"><?php echo $meus_acompanhantes; ?></strong>
-                                                <button onclick="updateAcompanhantes(<?php echo $ev['id']; ?>, <?php echo $meus_acompanhantes + 1; ?>)" class="btn-icon" style="background: white; border: 1px solid #10b981; color: #10b981; width: 24px; height: 24px; border-radius: 4px; cursor: pointer;">+</button>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
-                                    
-                                    <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'remover')" class="btn btn-outline btn-block btn-sm" style="margin-top: 15px; color: #991b1b; border-color: #fca5a5; font-weight: 600;">Desfazer Confirmação</button>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'remover')" class="btn btn-sm" style="flex: 1; background: #fff; border: 1px solid #fca5a5; color: #991b1b; font-size: 0.8em; height: 32px;">Cancelar</button>
+                                        <?php if($ev['permite_acompanhantes']): ?>
+                                            <button onclick="abrirAcompanhantes(<?php echo $ev['id']; ?>, <?php echo $meus_acompanhantes; ?>)" class="btn btn-sm" style="background: #fff; border: 1px solid #10b981; color: #10b981; width: 32px; height: 32px; padding: 0;"><i class="fa-solid fa-users"></i></button>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             <?php else: ?>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                    <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'confirmado')" class="btn btn-primary" style="border-radius: 12px; height: 48px; font-weight: 700;"><i class="fa-solid fa-check"></i> Eu Vou</button>
-                                    <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'recusado')" class="btn btn-outline" style="border-radius: 12px; height: 48px; font-weight: 600; <?php echo ($status_user === 'recusado') ? 'background: #f1f5f9; border-color: #cbd5e1; color: #94a3b8;' : 'border-style: dashed;'; ?>">
-                                        <i class="fa-solid fa-xmark"></i> <?php echo ($status_user === 'recusado') ? 'Não irei' : 'Não poderei'; ?>
-                                    </button>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'confirmado')" class="btn btn-primary btn-sm" style="height: 40px; font-weight: 700;">Sim, irei</button>
+                                    <button onclick="confirmarPresenca(<?php echo $ev['id']; ?>, 'recusado')" class="btn btn-outline btn-sm" style="height: 40px; font-weight: 600; font-size: 0.85em; border-style: dashed;">Não poderei</button>
                                 </div>
                             <?php endif; ?>
-                        <?php else: ?>
-                            <div style="text-align: center; color: var(--text-muted); font-size: 0.85em; font-style: italic;">Não é necessário confirmar presença para este evento.</div>
+                        <?php endif; ?>
+
+                        <?php if(!empty($ev['mapa_link'])): ?>
+                            <a href="<?php echo htmlspecialchars($ev['mapa_link']); ?>" target="_blank" class="btn btn-outline btn-block btn-sm" style="margin-top: 8px; border-radius: 8px; font-size: 0.8em; height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--text-muted);">
+                                <i class="fa-solid fa-location-arrow"></i> Link / Mapa
+                            </a>
                         <?php endif; ?>
                     </div>
-
-                    <?php if(!empty($ev['mapa_link'])): ?>
-                        <a href="<?php echo htmlspecialchars($ev['mapa_link']); ?>" target="_blank" class="btn btn-outline btn-block" style="margin-top: 10px; border-radius: 12px; font-size: 0.85em; border-color: var(--border); color: var(--text-muted);">
-                            <i class="fa-solid fa-location-arrow"></i> Ver Localização / Link
-                        </a>
-                    <?php endif; ?>
                 </div>
             </div>
         <?php endforeach; else: ?>
