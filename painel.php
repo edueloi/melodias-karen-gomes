@@ -509,6 +509,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("DELETE FROM eventos WHERE id = ?")->execute([$id_evento]);
             $notificacao = "showToast('Excluído', 'Evento removido com sucesso!', 'error');";
         }
+
+        if ($acao === 'delete_presenca') {
+            $tipo = $_POST['tipo_presenca'];
+            $id_p = $_POST['presenca_id'];
+            
+            if ($tipo === 'interna') {
+                $pdo->prepare("DELETE FROM eventos_presenca WHERE id = ?")->execute([$id_p]);
+            } else {
+                $pdo->prepare("DELETE FROM eventos_presenca_externa WHERE id = ?")->execute([$id_p]);
+            }
+            $notificacao = "showToast('Removido', 'Presença removida com sucesso!', 'success');";
+        }
     
         // --- MATERIAIS ---
         if ($acao === 'add_material') {
@@ -4781,7 +4793,10 @@ elseif ($pagina === 'event_report'):
                     </td>
                     <td style="padding:10px; text-align:center;"><?php echo $p['acompanhantes'] > 0 ? '+'.$p['acompanhantes'] : '-'; ?></td>
                     <td style="padding:10px; text-align:right;">
-                        <a href="https://wa.me/<?php echo preg_replace('/[^0-9]/','',$p['whatsapp']); ?>" target="_blank" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px;"><i class="fa-brands fa-whatsapp"></i></a>
+                        <div style="display:flex; justify-content:flex-end; gap:6px;">
+                            <a href="https://wa.me/<?php echo preg_replace('/[^0-9]/','',$p['whatsapp']); ?>" target="_blank" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px; display:inline-flex; align-items:center; height:32px;" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+                            <button onclick="deletarPresenca('interna', <?php echo $p['id']; ?>, '<?php echo addslashes($p['nome']); ?>')" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px; color:var(--danger); border-color:#fee2e2; display:inline-flex; align-items:center; height:32px;" title="Excluir"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -4794,7 +4809,10 @@ elseif ($pagina === 'event_report'):
                     </td>
                     <td style="padding:10px; text-align:center;"><?php echo $ext['acompanhantes'] > 0 ? '+'.$ext['acompanhantes'] : '-'; ?></td>
                     <td style="padding:10px; text-align:right;">
-                        <a href="https://wa.me/<?php echo preg_replace('/[^0-9]/','',$ext['whatsapp']); ?>" target="_blank" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px;"><i class="fa-brands fa-whatsapp"></i></a>
+                        <div style="display:flex; justify-content:flex-end; gap:6px;">
+                            <a href="https://wa.me/<?php echo preg_replace('/[^0-9]/','',$ext['whatsapp']); ?>" target="_blank" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px; display:inline-flex; align-items:center; height:32px;" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+                            <button onclick="deletarPresenca('externa', <?php echo $ext['id']; ?>, '<?php echo addslashes($ext['nome']); ?>')" class="btn btn-sm btn-outline" style="padding:4px 8px; border-radius:8px; color:var(--danger); border-color:#fee2e2; display:inline-flex; align-items:center; height:32px;" title="Excluir"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -5341,6 +5359,24 @@ elseif ($pagina === 'event_report'):
                     }
                 });
             }
+        }
+        
+        function deletarPresenca(tipo, id, nome) {
+            confirmarAcao({
+                titulo: 'Remover Confirmação',
+                msg: `Deseja remover a presença de <b>${nome}</b>?`,
+                icon: 'fa-solid fa-user-xmark',
+                iconClass: 'icon-danger',
+                btnText: 'Remover',
+                btnClass: 'btn-danger',
+                callback: function() {
+                    const f = document.createElement('form');
+                    f.method = 'POST';
+                    f.innerHTML = `<input type="hidden" name="acao" value="delete_presenca"><input type="hidden" name="tipo_presenca" value="${tipo}"><input type="hidden" name="presenca_id" value="${id}">`;
+                    document.body.appendChild(f);
+                    f.submit();
+                }
+            });
         }
 
         // === PREVIEW DE MATERIAL (LER ONLINE) ===
