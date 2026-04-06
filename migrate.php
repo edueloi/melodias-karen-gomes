@@ -32,6 +32,60 @@ function runMigration(PDO $pdo, string $driver, string $desc, string $mysql_sql,
 }
 
 // ====================================================
+// TABELA: profissionais — novas colunas de perfil
+// ====================================================
+$prof_cols = [
+    ['role', "ADD COLUMN role VARCHAR(50) DEFAULT 'user'", "ADD COLUMN role TEXT DEFAULT 'user'"],
+    ['status', "ADD COLUMN status VARCHAR(50) DEFAULT 'ativo'", "ADD COLUMN status TEXT DEFAULT 'ativo'"],
+    ['senha', "ADD COLUMN senha VARCHAR(255)", "ADD COLUMN senha TEXT"],
+    ['foto', "ADD COLUMN foto VARCHAR(512)", "ADD COLUMN foto TEXT"],
+    ['bio', "ADD COLUMN bio TEXT", "ADD COLUMN bio TEXT"],
+    ['registro_tipo', "ADD COLUMN registro_tipo VARCHAR(50)", "ADD COLUMN registro_tipo TEXT"],
+    ['registro_numero', "ADD COLUMN registro_numero VARCHAR(50)", "ADD COLUMN registro_numero TEXT"],
+    ['area_atuacao', "ADD COLUMN area_atuacao VARCHAR(255)", "ADD COLUMN area_atuacao TEXT"],
+    ['formacao_superior', "ADD COLUMN formacao_superior VARCHAR(255)", "ADD COLUMN formacao_superior TEXT"],
+    ['formacao_pos', "ADD COLUMN formacao_pos VARCHAR(255)", "ADD COLUMN formacao_pos TEXT"],
+    ['instagram', "ADD COLUMN instagram VARCHAR(100)", "ADD COLUMN instagram TEXT"],
+    ['website', "ADD COLUMN website VARCHAR(255)", "ADD COLUMN website TEXT"],
+    ['genero', "ADD COLUMN genero VARCHAR(50) DEFAULT 'Não declarado'", "ADD COLUMN genero TEXT DEFAULT 'Não declarado'"],
+    ['endereco', "ADD COLUMN endereco TEXT", "ADD COLUMN endereco TEXT"],
+    ['descricao_trabalho', "ADD COLUMN descricao_trabalho TEXT", "ADD COLUMN descricao_trabalho TEXT"],
+    ['aceita_parcerias', "ADD COLUMN aceita_parcerias VARCHAR(20) DEFAULT 'Não'", "ADD COLUMN aceita_parcerias TEXT DEFAULT 'Não'"],
+    ['preco_social', "ADD COLUMN preco_social VARCHAR(20) DEFAULT 'Não'", "ADD COLUMN preco_social TEXT DEFAULT 'Não'"],
+    ['welcome_seen', "ADD COLUMN welcome_seen TINYINT(1) DEFAULT 0", "ADD COLUMN welcome_seen INTEGER DEFAULT 0"],
+    ['created_at', "ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP", "ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP"],
+    ['updated_at', "ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP", "ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP"]
+];
+
+foreach ($prof_cols as $col) {
+    $results[] = runMigration($pdo, $driver, "profissionais: coluna {$col[0]}", 
+        "ALTER TABLE profissionais {$col[1]}",
+        "ALTER TABLE profissionais {$col[2]}"
+    );
+}
+
+// ====================================================
+// TABELA: materiais — novas colunas
+// ====================================================
+$mat_cols = [
+    ['descricao', "ADD COLUMN descricao TEXT", "ADD COLUMN descricao TEXT"],
+    ['tipo', "ADD COLUMN tipo VARCHAR(50) DEFAULT 'material'", "ADD COLUMN tipo TEXT DEFAULT 'material'"],
+    ['autor', "ADD COLUMN autor VARCHAR(255)", "ADD COLUMN autor TEXT"],
+    ['url_externa', "ADD COLUMN url_externa TEXT", "ADD COLUMN url_externa TEXT"],
+    ['capa', "ADD COLUMN capa VARCHAR(512)", "ADD COLUMN capa TEXT"],
+    ['created_by', "ADD COLUMN created_by INT", "ADD COLUMN created_by INTEGER"],
+    ['created_at', "ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP", "ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP"],
+    ['updated_at', "ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP", "ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP"]
+];
+
+foreach ($mat_cols as $col) {
+    $results[] = runMigration($pdo, $driver, "materiais: coluna {$col[0]}", 
+        "ALTER TABLE materiais {$col[1]}",
+        "ALTER TABLE materiais {$col[2]}"
+    );
+}
+
+// ====================================================
 // TABELA: eventos — adicionar colunas novas
 // ====================================================
 $results[] = runMigration($pdo, $driver,
@@ -79,6 +133,12 @@ $results[] = runMigration($pdo, $driver,
     "ALTER TABLE eventos_presenca ADD COLUMN acompanhantes INTEGER DEFAULT 0"
 );
 
+$results[] = runMigration($pdo, $driver,
+    'eventos_presenca: coluna contribuicao_obs',
+    "ALTER TABLE eventos_presenca ADD COLUMN contribuicao_obs TEXT DEFAULT NULL",
+    "ALTER TABLE eventos_presenca ADD COLUMN contribuicao_obs TEXT DEFAULT NULL"
+);
+
 // ====================================================
 // TABELA: eventos_presenca_externa (nova — convidados externos)
 // ====================================================
@@ -90,6 +150,7 @@ CREATE TABLE IF NOT EXISTS eventos_presenca_externa (
     whatsapp VARCHAR(30) DEFAULT NULL,
     acompanhantes INT NOT NULL DEFAULT 0,
     contribuicao_item VARCHAR(255) DEFAULT NULL,
+    contribuicao_obs TEXT DEFAULT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'confirmado',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     KEY idx_evento_id (evento_id)
@@ -103,6 +164,7 @@ CREATE TABLE IF NOT EXISTS eventos_presenca_externa (
     whatsapp TEXT DEFAULT NULL,
     acompanhantes INTEGER DEFAULT 0,
     contribuicao_item TEXT DEFAULT NULL,
+    contribuicao_obs TEXT DEFAULT NULL,
     status TEXT DEFAULT 'confirmado',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -144,15 +206,6 @@ CREATE TABLE IF NOT EXISTS eventos_contribuicoes (
 $results[] = runMigration($pdo, $driver,
     'CREATE TABLE eventos_contribuicoes',
     $mysql_contrib, $sqlite_contrib
-);
-
-// ====================================================
-// TABELA: profissionais — garantir coluna genero
-// ====================================================
-$results[] = runMigration($pdo, $driver,
-    'profissionais: coluna genero',
-    "ALTER TABLE profissionais ADD COLUMN genero VARCHAR(50) DEFAULT 'Não declarado'",
-    "ALTER TABLE profissionais ADD COLUMN genero TEXT DEFAULT 'Não declarado'"
 );
 
 // ====================================================

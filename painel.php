@@ -100,6 +100,7 @@ try {
             "ALTER TABLE profissionais ADD COLUMN descricao_trabalho TEXT",
             "ALTER TABLE profissionais ADD COLUMN aceita_parcerias TEXT DEFAULT 'Não'",
             "ALTER TABLE profissionais ADD COLUMN preco_social TEXT DEFAULT 'Não'",
+            "ALTER TABLE profissionais ADD COLUMN welcome_seen INTEGER DEFAULT 0",
             "ALTER TABLE profissionais ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP",
             "ALTER TABLE profissionais ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP",
             "ALTER TABLE materiais ADD COLUMN descricao TEXT",
@@ -116,6 +117,7 @@ try {
             "ALTER TABLE eventos ADD COLUMN itens_colaborativos TEXT",
             "ALTER TABLE eventos_presenca ADD COLUMN acompanhantes INTEGER DEFAULT 0",
             "ALTER TABLE eventos ADD COLUMN capa TEXT",
+            "ALTER TABLE eventos_presenca ADD COLUMN contribuicao_obs TEXT",
             "CREATE TABLE IF NOT EXISTS eventos_presenca_externa (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 evento_id INTEGER NOT NULL,
@@ -124,6 +126,7 @@ try {
                 status TEXT DEFAULT 'confirmado',
                 acompanhantes INTEGER DEFAULT 0,
                 contribuicao_item TEXT,
+                contribuicao_obs TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
         ];
@@ -133,7 +136,7 @@ try {
     // Configurações padrão (compatível SQLite e MySQL)
     $configs_padrao = [
         ['whatsapp_auto_abrir', '1'],
-        ['whatsapp_mensagem_template', "🎉 *Bem-vindo(a) ao Melodias!*\n\nOlá {NOME}, sua solicitação foi *aprovada*!\n\n📋 *Seus dados de acesso:*\n\n🔗 *Link:*\n{LINK}\n\n📧 *Email/Login:*\n{EMAIL}\n\n🔑 *Senha Temporária:*\n{SENHA}\n\n⚠️ _Recomendamos trocar sua senha após o primeiro acesso._\n\n✨ Agora você faz parte da nossa rede de profissionais em saúde mental!"]
+        ['whatsapp_mensagem_template', "🎉 *Bem-vindo(a) ao Grupo Melodias!*\n\nOlá {NOME}, sua solicitação foi *aprovada* e agora você faz parte da nossa rede de apoio e networking!\n\n📋 *Seus dados de acesso:*\n\n🔗 *Link:*\n{LINK}\n\n📧 *Email/Login:*\n{EMAIL}\n\n🔑 *Senha Temporária:*\n{SENHA}\n\n⚠️ _Recomendamos trocar sua senha após o primeiro acesso._\n\n✨ Juntos somos mais fortes!"]
     ];
     $insert_ignore = dbDriver() === 'mysql'
         ? "INSERT IGNORE INTO configuracoes (chave, valor) VALUES (?, ?)"
@@ -185,6 +188,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id_usuario, $texto]);
             $notificacao = "showToast('Sucesso', 'Sua ideia foi enviada!', 'success');";
         }
+    }
+
+    if ($acao === 'dismiss_welcome') {
+        $stmt = $pdo->prepare("UPDATE profissionais SET welcome_seen = 1 WHERE id = ?");
+        $stmt->execute([$id_usuario]);
+        echo json_encode(['status' => 'ok']);
+        exit;
     }
     
     // --- EVENTOS / PRESENÇA ---
@@ -6337,7 +6347,98 @@ elseif ($pagina === 'event_report'):
         </div>
     </div>
 
+    <!-- Modal: Boas-vindas (Primeiro Acesso) -->
+    <div class="modal-overlay" id="modalBoasVindas" style="background: rgba(11,26,32,0.9); backdrop-filter: blur(12px);">
+        <div class="modal-content" style="max-width: 600px; border: none; overflow: hidden; background: white; border-radius: 24px;">
+            <div style="background: linear-gradient(135deg, var(--primary), #8B3A4D); padding: 40px 30px; text-align: center; color: white;">
+                <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 2.5em; animation: bounceIn 0.8s ease;">
+                    👋
+                </div>
+                <h1 style="font-size: 1.8em; font-weight: 800; margin-bottom: 10px; letter-spacing: -0.5px;">Olá, <?php echo $primeiro_nome; ?>!</h1>
+                <p style="opacity: 0.9; font-size: 1.1em;">Seja muito bem-vindo ao <b>Grupo Melodias</b>.</p>
+            </div>
+            
+            <div class="modal-body" style="padding: 30px; color: var(--text-main);">
+                <p style="text-align: center; margin-bottom: 30px; line-height: 1.6; color: var(--text-muted);">
+                    Ficamos muito felizes em ter você aqui! Este sistema foi criado exclusivamente para facilitar a nossa comunicação e fortalecer o networking do nosso grupo.
+                </p>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <i class="fa-solid fa-users" style="color: var(--primary); font-size: 1.2em; margin-top: 4px;"></i>
+                        <div>
+                            <strong style="display: block; font-size: 0.95em;">Networking</strong>
+                            <span style="font-size: 0.85em; color: var(--text-muted); line-height: 1.4;">Conheça os membros, áreas de atuação e parcerias.</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <i class="fa-solid fa-comments" style="color: var(--primary); font-size: 1.2em; margin-top: 4px;"></i>
+                        <div>
+                            <strong style="display: block; font-size: 0.95em;">Troca de Conhecimento</strong>
+                            <span style="font-size: 0.85em; color: var(--text-muted); line-height: 1.4;">Fórum para debates, dúvidas e apoio mútuo.</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <i class="fa-solid fa-calendar-check" style="color: var(--primary); font-size: 1.2em; margin-top: 4px;"></i>
+                        <div>
+                            <strong style="display: block; font-size: 0.95em;">Eventos e Encontros</strong>
+                            <span style="font-size: 0.85em; color: var(--text-muted); line-height: 1.4;">Fique por dentro de cafés, cursos e eventos presenciais.</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <i class="fa-solid fa-square-poll-vertical" style="color: var(--primary); font-size: 1.2em; margin-top: 4px;"></i>
+                        <div>
+                            <strong style="display: block; font-size: 0.95em;">Enquetes e Ideias</strong>
+                            <span style="font-size: 0.85em; color: var(--text-muted); line-height: 1.4;">Dê sua opinião e contribua para a evolução do grupo.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(110,43,58,0.05); padding: 20px; border-radius: 16px; border: 1px solid rgba(110,43,58,0.1); margin-bottom: 30px; text-align: center;">
+                    <p style="font-size: 0.9em; font-weight: 600; color: var(--primary); line-height: 1.4;">
+                        "Juntos somamos forças para transformar o cuidado com a saúde mental."
+                    </p>
+                </div>
+
+                <button onclick="dismissWelcomeModal()" class="btn btn-primary btn-block btn-lg" style="height: 56px; border-radius: 16px; font-weight: 800; font-size: 1.1em; box-shadow: 0 10px 20px rgba(110,43,58,0.2);">
+                    Começar minha Experiência <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
+    // Trigger para o modal de boas-vindas
+    document.addEventListener('DOMContentLoaded', function() {
+        const shouldShowWelcome = <?php echo ($user['welcome_seen'] ?? 0) == 0 ? 'true' : 'false'; ?>;
+        if (shouldShowWelcome) {
+            setTimeout(() => {
+                openModal('modalBoasVindas');
+            }, 1000);
+        }
+    });
+
+    function dismissWelcomeModal() {
+        const formData = new FormData();
+        formData.append('acao', 'dismiss_welcome');
+
+        fetch('painel.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                closeModal('modalBoasVindas');
+                showToast('Bem-vindo!', 'Aproveite o sistema do Grupo Melodias.', 'success');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao marcar boas-vindas:', error);
+            closeModal('modalBoasVindas'); // Fecha de qualquer forma
+        });
+    }
+    
     function verDetalhesEvento(ev) {
         document.getElementById('ver_ev_titulo').innerText = ev.titulo;
         // Fix for iOS/Safari date formatting by replacing space with T if needed
