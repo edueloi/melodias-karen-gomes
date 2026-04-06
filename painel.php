@@ -4713,77 +4713,7 @@ elseif ($pagina === 'eventos'):
                 <p style="color: var(--text-muted); margin-top: 5px;">Acompanhe o painel em breve para novas oportunidades de conexão.</p>
             </div>
         <?php endif; ?>
-    </div>
-    
-    <script>
-    function copiarLinkPublico(eventoId) {
-        const link = window.location.href.split('Site/')[0] + 'Site/melodias/rsvp.php?id=' + eventoId;
-        navigator.clipboard.writeText(link).then(() => {
-            showToast('Sucesso', 'Link copiado para a área de transferência!', 'success');
-        });
-    }
-
-    function toggleContribuicao(eventoId, itemNome, operacao) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="acao" value="gerenciar_contribuicao">
-            <input type="hidden" name="evento_id" value="${eventoId}">
-            <input type="hidden" name="item_nome" value="${itemNome}">
-            <input type="hidden" name="operacao" value="${operacao}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
-    }
-    
-    function updateAcompanhantes(eventoId, qtd) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="acao" value="confirmar_presenca">
-            <input type="hidden" name="evento_id" value="${eventoId}">
-            <input type="hidden" name="status_presenca" value="confirmado">
-            <input type="hidden" name="acompanhantes" value="${qtd}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
-    }
-
-    function confirmarPresenca(evento_id, status) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="acao" value="confirmar_presenca">
-            <input type="hidden" name="evento_id" value="${evento_id}">
-            <input type="hidden" name="status_presenca" value="${status}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
-    }
-    
-    function confirmarDelete(tipo, id, nome) {
-        if(tipo === 'evento') {
-            confirmarAcao({
-                titulo: 'Deletar Evento',
-                msg: `Deseja apagar o evento <b>${nome}</b>?<br><br>As presenças também serão apagadas.`,
-                icon: 'fa-solid fa-calendar-xmark',
-                iconClass: 'icon-danger',
-                btnText: 'Excluir',
-                btnClass: 'btn-danger',
-                callback: function() {
-                    let f = document.createElement('form');
-                    f.method = 'POST';
-                    f.innerHTML = `<input type="hidden" name="acao" value="delete_evento"><input type="hidden" name="id_evento" value="${id}">`;
-                    document.body.appendChild(f);
-                    f.submit();
-                }
-            });
-            return;
-        }
-    }
-    </script>
-
-
+    </div> <!-- .grid-cards -->
 <?php 
 // ### PÁGINA: RELATÓRIO DE EVENTO (FRAGMENTO AJAX) ###
 elseif ($pagina === 'event_report'):
@@ -5253,6 +5183,166 @@ elseif ($pagina === 'event_report'):
             }
         }
 
+        // === EVENTOS: FUNÇÕES GLOBAIS ===
+        function confirmarPresenca(evento_id, status) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.innerHTML = `<input type="hidden" name="acao" value="confirmar_presenca"><input type="hidden" name="evento_id" value="${evento_id}"><input type="hidden" name="status_presenca" value="${status}">`;
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function updateAcompanhantes(eventoId, qtd) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.innerHTML = `<input type="hidden" name="acao" value="confirmar_presenca"><input type="hidden" name="evento_id" value="${eventoId}"><input type="hidden" name="status_presenca" value="confirmado"><input type="hidden" name="acompanhantes" value="${qtd}">`;
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function toggleContribuicao(eventoId, itemNome, operacao) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.innerHTML = `<input type="hidden" name="acao" value="gerenciar_contribuicao"><input type="hidden" name="evento_id" value="${eventoId}"><input type="hidden" name="item_nome" value="${itemNome}"><input type="hidden" name="operacao" value="${operacao}">`;
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function copiarLinkPublico(eventoId) {
+            // Remove o nome do arquivo atual do path (funciona com ou sem .php na URL)
+            const dir = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+            const link = dir + 'rsvp.php?id=' + eventoId;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(link).then(() => showToast('Sucesso', 'Link copiado!', 'success'));
+            } else {
+                prompt('Copie o link público:', link);
+            }
+        }
+
+        function syncDateTime(type) {
+            const dateEl = document.getElementById('ev_date_' + type);
+            const timeEl = document.getElementById('ev_time_' + type);
+            const hiddenEl = document.getElementById('ev_dt_' + type + '_hidden');
+            if (dateEl && timeEl && hiddenEl && dateEl.value && timeEl.value) {
+                hiddenEl.value = dateEl.value + ' ' + timeEl.value + ':00';
+            }
+        }
+
+        function abrirRelatorio(eventoId) {
+            openModal('modalRelatorioEvento');
+            const container = document.getElementById('relatorio_content');
+            if (!container) return;
+            container.innerHTML = '<div style="text-align:center;padding:40px;"><i class="fa-solid fa-circle-notch fa-spin fa-2x" style="color:var(--primary);"></i></div>';
+            fetch('painel.php?page=event_report&id=' + eventoId)
+                .then(res => res.text())
+                .then(html => {
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const content = doc.getElementById('report_data');
+                    container.innerHTML = content ? content.innerHTML : '<p style="text-align:center;padding:30px;color:var(--danger);">Erro ao carregar relatório.</p>';
+                })
+                .catch(() => { container.innerHTML = '<p style="text-align:center;padding:30px;color:var(--danger);">Falha na conexão.</p>'; });
+        }
+
+        function abrirEditarEvento(ev) {
+            document.getElementById('edit_ev_id').value = ev.id;
+            document.getElementById('edit_ev_titulo').value = ev.titulo || '';
+            if (ev.data_evento) {
+                const parts = ev.data_evento.split(' ');
+                const dateEl = document.getElementById('edit_ev_date_only');
+                const timeEl = document.getElementById('edit_ev_time_only');
+                const hiddenEl = document.getElementById('edit_ev_data_hidden');
+                if (dateEl) dateEl.value = parts[0];
+                if (timeEl) timeEl.value = parts[1] ? parts[1].substring(0, 5) : '';
+                if (hiddenEl) hiddenEl.value = ev.data_evento;
+            }
+            const localEl = document.getElementById('edit_ev_local');
+            const mapaEl  = document.getElementById('edit_ev_mapa');
+            const descEl  = document.getElementById('edit_ev_desc');
+            const rsvpEl  = document.getElementById('edit_ev_rsvp');
+            const acompEl = document.getElementById('edit_ev_acompanhantes');
+            const colabEl = document.getElementById('edit_ev_colaborativo');
+            const itensEl = document.getElementById('edit_ev_itens');
+            const colabOpt= document.getElementById('colab_options_edit_v2');
+            if (localEl) localEl.value = ev.local || '';
+            if (mapaEl)  mapaEl.value  = ev.mapa_link || '';
+            if (descEl)  descEl.value  = ev.descricao || '';
+            if (rsvpEl)  rsvpEl.checked  = parseInt(ev.rsvp_ativo) === 1;
+            if (acompEl) acompEl.checked = parseInt(ev.permite_acompanhantes) === 1;
+            const colab = parseInt(ev.colaborativo_ativo) === 1;
+            if (colabEl) colabEl.checked = colab;
+            if (colabOpt) colabOpt.style.display = colab ? 'block' : 'none';
+            if (itensEl) itensEl.value = ev.itens_colaborativos || '';
+            openModal('modalEditEvento');
+        }
+
+        function confirmarDelete(tipo, id, nome) {
+            if (tipo === 'evento') {
+                confirmarAcao({
+                    titulo: 'Excluir Evento',
+                    msg: `Deseja apagar o evento <b>${nome}</b>?<br><br>As presenças também serão apagadas.`,
+                    icon: 'fa-solid fa-calendar-xmark',
+                    iconClass: 'icon-danger',
+                    btnText: 'Excluir',
+                    btnClass: 'btn-danger',
+                    callback: function() {
+                        const f = document.createElement('form');
+                        f.method = 'POST';
+                        f.innerHTML = `<input type="hidden" name="acao" value="delete_evento"><input type="hidden" name="id_evento" value="${id}">`;
+                        document.body.appendChild(f);
+                        f.submit();
+                    }
+                });
+            } else if (tipo === 'post_forum') {
+                confirmarAcao({
+                    titulo: 'Excluir Tópico',
+                    msg: `Deseja apagar o tópico <b>${nome}</b>?`,
+                    icon: 'fa-solid fa-trash',
+                    iconClass: 'icon-danger',
+                    btnText: 'Excluir',
+                    btnClass: 'btn-danger',
+                    callback: function() {
+                        const f = document.createElement('form');
+                        f.method = 'POST';
+                        f.innerHTML = `<input type="hidden" name="acao" value="delete_post_forum"><input type="hidden" name="post_id" value="${id}">`;
+                        document.body.appendChild(f);
+                        f.submit();
+                    }
+                });
+            } else if (tipo === 'comentario') {
+                confirmarAcao({
+                    titulo: 'Excluir Comentário',
+                    msg: 'Deseja apagar este comentário?',
+                    icon: 'fa-solid fa-trash',
+                    iconClass: 'icon-danger',
+                    btnText: 'Excluir',
+                    btnClass: 'btn-danger',
+                    callback: function() {
+                        const f = document.createElement('form');
+                        f.method = 'POST';
+                        f.innerHTML = `<input type="hidden" name="acao" value="delete_comentario"><input type="hidden" name="comentario_id" value="${id}">`;
+                        document.body.appendChild(f);
+                        f.submit();
+                    }
+                });
+            } else if (tipo === 'usuario') {
+                confirmarAcao({
+                    titulo: 'Excluir Usuário',
+                    msg: `Deseja apagar o usuário <b>${nome}</b>?`,
+                    icon: 'fa-solid fa-user-slash',
+                    iconClass: 'icon-danger',
+                    btnText: 'Excluir',
+                    btnClass: 'btn-danger',
+                    callback: function() {
+                        const f = document.createElement('form');
+                        f.method = 'POST';
+                        f.innerHTML = `<input type="hidden" name="acao" value="delete_usuario"><input type="hidden" name="id_user" value="${id}">`;
+                        document.body.appendChild(f);
+                        f.submit();
+                    }
+                });
+            }
+        }
+
         // === PREVIEW DE MATERIAL (LER ONLINE) ===
         function abrirPreview(m) {
             const modal = document.getElementById('modalPreview');
@@ -5655,49 +5745,8 @@ elseif ($pagina === 'event_report'):
             };
         })();
     </script>
-    <!-- ========================================================
-         MODAIS GLOBAIS (FORA DO MAIN-CONTENT PARA EVITAR CONFLITOS DE Z-INDEX)
-         ======================================================== -->
 
-    <!-- Modal Novo Tópico -->
-    <div class="modal-overlay" id="modalNovoPost" style="z-index: 9999;">
-        <div class="modal-content" style="max-width:640px;">
-            <div class="modal-header">
-                <h2>✍️ Criar Novo Tópico</h2>
-                <button class="close-modal" onclick="closeModal('modalNovoPost')"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="modal-body">
-                <form method="POST" action="">
-                    <input type="hidden" name="acao" value="criar_post_forum">
-                    <div class="input-group">
-                        <label>Título do Tópico *</label>
-                        <input type="text" name="titulo" class="input-control" required maxlength="200" placeholder="Ex: Dúvida sobre abordagem terapêutica...">
-                    </div>
-                    <div class="input-group">
-                        <label>Categoria *</label>
-                        <select name="categoria" class="input-control" required>
-                            <option value="">Selecione uma categoria...</option>
-                            <option value="duvidas">❓ Dúvidas</option>
-                            <option value="discussao">💭 Discussão</option>
-                            <option value="recursos">📚 Recursos</option>
-                            <option value="anuncios">📢 Anúncios</option>
-                            <option value="geral">💬 Geral</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>Conteúdo *</label>
-                        <textarea name="conteudo" class="input-control" required rows="7" placeholder="Descreva sua dúvida, compartilhe seu conhecimento..."></textarea>
-                    </div>
-                    <div style="display:flex;gap:10px;justify-content:flex-end;">
-                        <button type="button" class="btn btn-outline" onclick="closeModal('modalNovoPost')">Cancelar</button>
-                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Publicar Tópico</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 
-    <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $role === ROLE_EDITOR): ?>
     <!-- Modal Add Evento -->
     <div class="modal-overlay" id="modalAddEvento" style="z-index: 9999;">
         <div class="modal-content" style="max-width: 640px;">
@@ -5714,8 +5763,8 @@ elseif ($pagina === 'event_report'):
                         <div class="file-upload-wrapper">
                             <label class="file-upload-box" for="capa_add_file">
                                 <i class="fa-solid fa-cloud-arrow-up"></i>
-                                <span class="file-name" id="name_capa_add_file">Clique para subir a imagem de capa (SVG, PNG, JPG)</span>
-                                <span class="file-hint">Recomendado: 1200x600px para o card de evento</span>
+                                <span class="file-name" id="name_capa_add_file">Clique para subir a imagem de capa</span>
+                                <span class="file-hint">Recomendado: 1200x600px</span>
                                 <input type="file" name="capa" id="capa_add_file" accept="image/*" onchange="document.getElementById('name_capa_add_file').innerText = this.files[0].name" style="display:none !important;">
                             </label>
                         </div>
@@ -5728,13 +5777,19 @@ elseif ($pagina === 'event_report'):
 
                     <div class="form-grid">
                         <div class="input-group">
-                            <label>Data e Hora *</label>
-                            <input type="datetime-local" name="data_evento" class="input-control premium-input" required>
+                            <label>📅 Data *</label>
+                            <input type="date" id="ev_date_add" class="input-control premium-input" required onchange="syncDateTime('add')">
                         </div>
                         <div class="input-group">
-                            <label>Localização / Formato *</label>
-                            <input type="text" name="local" class="input-control premium-input" required placeholder="Ex: Online (Zoom), Clínica Melodias...">
+                            <label>🕒 Hora *</label>
+                            <input type="time" id="ev_time_add" class="input-control premium-input" required onchange="syncDateTime('add')">
                         </div>
+                        <input type="hidden" name="data_evento" id="ev_dt_add_hidden" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Localização / Formato *</label>
+                        <input type="text" name="local" class="input-control premium-input" required placeholder="Ex: Online (Zoom), Clínica Melodias...">
                     </div>
 
                     <div class="input-group">
@@ -5760,11 +5815,11 @@ elseif ($pagina === 'event_report'):
                             </label>
 
                             <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer; font-size:0.95em;">
-                                <input type="checkbox" name="colaborativo_ativo" value="1" onchange="document.getElementById('colab_options_add').style.display = this.checked ? 'block':'none'" style="width:20px; height:20px;"> Organização Colaborativa
+                                <input type="checkbox" name="colaborativo_ativo" value="1" onchange="document.getElementById('colab_options_add_v2').style.display = this.checked ? 'block':'none'" style="width:20px; height:20px;"> Divisão de Itens/Organização
                             </label>
                         </div>
 
-                        <div id="colab_options_add" style="display:none; margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
+                        <div id="colab_options_add_v2" style="display:none; margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
                             <label style="font-size:0.85em; font-weight:700; display:block; margin-bottom:8px;">Itens para contribuição (separados por vírgula):</label>
                             <textarea name="itens_colaborativos" class="input-control premium-input" rows="2" placeholder="Ex: Café, Bolo, Pão, Suco, Frutas..."></textarea>
                         </div>
@@ -5792,12 +5847,12 @@ elseif ($pagina === 'event_report'):
                     <input type="hidden" name="id_evento" id="edit_ev_id">
                     
                     <div class="input-group">
-                        <label>Alterar Imagem de Capa</label>
+                        <label>Imagem de Capa</label>
                         <div class="file-upload-wrapper">
-                            <label class="file-upload-box" for="capa_edit_file">
+                            <label class="file-upload-box" for="capa_edit_file_v2">
                                 <i class="fa-solid fa-image"></i>
-                                <span class="file-name" id="name_capa_edit_file">Clique para trocar a imagem de capa</span>
-                                <input type="file" name="capa" id="capa_edit_file" accept="image/*" onchange="document.getElementById('name_capa_edit_file').innerText = this.files[0].name" style="display:none !important;">
+                                <span class="file-name" id="name_capa_edit_v2">Clique para alterar a imagem</span>
+                                <input type="file" name="capa" id="capa_edit_file_v2" accept="image/*" onchange="document.getElementById('name_capa_edit_v2').innerText = this.files[0].name" style="display:none !important;">
                             </label>
                         </div>
                     </div>
@@ -5809,17 +5864,23 @@ elseif ($pagina === 'event_report'):
 
                     <div class="form-grid">
                         <div class="input-group">
-                            <label>Data e Hora *</label>
-                            <input type="datetime-local" name="data_evento" id="edit_ev_data" class="input-control premium-input" required>
+                            <label>📅 Data *</label>
+                            <input type="date" id="edit_ev_date_only" class="input-control premium-input" required onchange="syncDateTime('edit')">
                         </div>
                         <div class="input-group">
-                            <label>Localização / Formato *</label>
-                            <input type="text" name="local" id="edit_ev_local" class="input-control premium-input" required>
+                            <label>🕒 Hora *</label>
+                            <input type="time" id="edit_ev_time_only" class="input-control premium-input" required onchange="syncDateTime('edit')">
                         </div>
+                        <input type="hidden" name="data_evento" id="edit_ev_data_hidden" required>
                     </div>
 
                     <div class="input-group">
-                        <label>Link para Mapa (Opcional)</label>
+                        <label>Localização / Formato *</label>
+                        <input type="text" name="local" id="edit_ev_local" class="input-control premium-input" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Link para Mapa</label>
                         <input type="url" name="mapa_link" id="edit_ev_mapa" class="input-control premium-input">
                     </div>
 
@@ -5829,31 +5890,27 @@ elseif ($pagina === 'event_report'):
                     </div>
 
                     <div style="background:var(--bg-body); padding:20px; border-radius:12px; border:1px solid var(--border); margin-top:15px;">
-                        <h4 style="margin-bottom:15px; font-size:0.9em; text-transform:uppercase; color:var(--primary); letter-spacing:1px; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-toolbox"></i> Ferramentas</h4>
-                        
+                        <h4 style="margin-bottom:15px; font-size:0.9em; text-transform:uppercase; color:var(--primary); letter-spacing:1px;"><i class="fa-solid fa-toolbox"></i> Ferramentas</h4>
                         <div style="display:flex; flex-direction:column; gap:12px;">
-                            <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer; font-size:0.95em;">
-                                <input type="checkbox" name="rsvp_ativo" value="1" id="edit_ev_rsvp" style="width:20px; height:20px;"> RSVP (Confirmados)
+                            <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer;">
+                                <input type="checkbox" name="rsvp_ativo" value="1" id="edit_ev_rsvp" style="width:20px; height:20px;"> RSVP (Confirmações)
                             </label>
-                            
-                            <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer; font-size:0.95em;">
+                            <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer;">
                                 <input type="checkbox" name="permite_acompanhantes" value="1" id="edit_ev_acompanhantes" style="width:20px; height:20px;"> Acompanhantes
                             </label>
-
-                            <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer; font-size:0.95em;">
-                                <input type="checkbox" name="colaborativo_ativo" value="1" id="edit_ev_colaborativo" onchange="document.getElementById('colab_options_edit').style.display = this.checked ? 'block':'none'" style="width:20px; height:20px;"> Organizador Colaborativo
+                            <label style="display:flex; align-items:center; gap:12px; font-weight:600; cursor:pointer;">
+                                <input type="checkbox" name="colaborativo_ativo" value="1" id="edit_ev_colaborativo" onchange="document.getElementById('colab_options_edit_v2').style.display = this.checked ? 'block':'none'" style="width:20px; height:20px;"> Divisão Colaborativa
                             </label>
                         </div>
-
-                        <div id="colab_options_edit" style="display:none; margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
-                            <label style="font-size:0.85em; font-weight:700; display:block; margin-bottom:8px;">Itens para contribuição:</label>
+                        <div id="colab_options_edit_v2" style="display:none; margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
+                            <label style="font-size:0.85em; font-weight:700;">Itens para contribuição:</label>
                             <textarea name="itens_colaborativos" id="edit_ev_itens" class="input-control premium-input" rows="2"></textarea>
                         </div>
                     </div>
 
                     <div style="display:flex; gap:12px; justify-content:flex-end; margin-top: 30px;">
                         <button type="button" class="btn btn-outline" onclick="closeModal('modalEditEvento')">Cancelar</button>
-                        <button type="submit" class="btn btn-primary btn-lg" style="border-radius: 14px; font-weight: 800; padding: 12px 30px;"><i class="fa-solid fa-save"></i> Salvar Mudanças</button>
+                        <button type="submit" class="btn btn-primary btn-lg" style="border-radius: 14px; font-weight: 800; padding: 12px 30px;"><i class="fa-solid fa-save"></i> Salvar Alterações</button>
                     </div>
                 </form>
             </div>
@@ -5870,53 +5927,10 @@ elseif ($pagina === 'event_report'):
             <div id="relatorio_content" class="modal-body" style="padding:0;">
                 <div style="text-align:center; padding:60px;">
                     <i class="fa-solid fa-circle-notch fa-spin fa-2x" style="color:var(--primary);"></i>
-                    <p style="margin-top:15px; color: var(--text-muted);">Carregando detalhes do evento...</p>
                 </div>
             </div>
         </div>
     </div>
-    <?php endif; ?>
-
-    <script>
-    function toggleItensColab(cb, targetId) {
-        document.getElementById(targetId).style.display = cb.checked ? 'block' : 'none';
-    }
-    
-    function abrirRelatorio(eventoId) {
-        openModal('modalRelatorioEvento');
-        const container = document.getElementById('relatorio_content');
-        container.innerHTML = `<div style="text-align:center; padding:40px;"><i class="fa-solid fa-circle-notch fa-spin fa-2x" style="color:var(--primary);"></i></div>`;
-        
-        fetch(`painel.php?page=event_report&id=${eventoId}`)
-            .then(res => res.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const content = doc.getElementById('report_data');
-                if(content) container.innerHTML = content.innerHTML;
-                else container.innerHTML = '<p class="error" style="text-align:center; padding:30px;">Falha ao carregar relatório.</p>';
-            });
-    }
-
-    function abrirEditarEvento(ev) {
-        document.getElementById('edit_ev_id').value = ev.id;
-        document.getElementById('edit_ev_titulo').value = ev.titulo;
-        document.getElementById('edit_ev_data').value = ev.data_evento.replace(' ', 'T').substring(0, 16);
-        document.getElementById('edit_ev_local').value = ev.local;
-        document.getElementById('edit_ev_mapa').value = ev.mapa_link;
-        document.getElementById('edit_ev_desc').value = ev.descricao;
-        
-        document.getElementById('edit_ev_rsvp').checked = parseInt(ev.rsvp_ativo) === 1;
-        document.getElementById('edit_ev_acompanhantes').checked = parseInt(ev.permite_acompanhantes) === 1;
-        
-        const colab = parseInt(ev.colaborativo_ativo) === 1;
-        document.getElementById('edit_ev_colaborativo').checked = colab;
-        document.getElementById('colab_options_edit').style.display = colab ? 'block' : 'none';
-        document.getElementById('edit_ev_itens').value = ev.itens_colaborativos || '';
-        
-        openModal('modalEditEvento');
-    }
-    </script>
 
 </body>
 </html>
