@@ -4290,6 +4290,12 @@ elseif ($pagina === 'forum'):
 </div>
 
 <script>
+    function abrirEditarComentario(id, texto) {
+        document.getElementById('edit_coment_id').value = id;
+        document.getElementById('edit_coment_text').value = texto;
+        openModal('modalEditComentario');
+    }
+
 function curtirPost(postId, reload = false) {
     const form = document.createElement('form');
     form.method = 'POST';
@@ -4564,34 +4570,39 @@ elseif ($pagina === 'eventos'):
                     </div>
                 <?php endif; ?>
 
-                <div style="padding: 20px; border-bottom: 1px solid var(--border); position: relative; background: <?php echo empty($ev['capa']) ? 'transparent' : 'rgba(0,0,0,0.02)'; ?>;">
-                    <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; z-index: 5;">
-                        <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $role === ROLE_EDITOR): ?>
-                        <button onclick='abrirEditarEvento(<?php echo htmlspecialchars(json_encode($ev, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, "UTF-8"); ?>)' class="btn btn-sm" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; background: white; border: 1px solid var(--border); color: var(--text-muted); box-shadow: 0 2px 5px rgba(0,0,0,0.05);" title="Editar Evento">
-                            <i class="fa-solid fa-pen" style="font-size: 0.85em;"></i>
-                        </button>
-                        <button onclick='abrirRelatorio(<?php echo $ev['id']; ?>)' class="btn btn-sm" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; background: white; border: 1px solid var(--border); color: var(--text-muted); box-shadow: 0 2px 5px rgba(0,0,0,0.05);" title="Ver Relatório">
-                            <i class="fa-solid fa-chart-pie" style="font-size: 0.85em;"></i>
-                        </button>
-                        <button onclick='copiarLinkPublico(<?php echo $ev['id']; ?>)' class="btn btn-sm" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; background: white; border: 1px solid var(--border); color: var(--text-muted); box-shadow: 0 2px 5px rgba(0,0,0,0.05);" title="Copiar Link Público">
-                            <i class="fa-solid fa-link" style="font-size: 0.85em;"></i>
-                        </button>
-                        <button onclick="confirmarDelete('evento', <?php echo $ev['id']; ?>, '<?php echo addslashes($ev['titulo']); ?>')" class="btn btn-danger btn-sm" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; background: #ef4444; color: white; border: none; box-shadow: 0 2px 5px rgba(239,68,68,0.2);" title="Excluir Evento">
-                            <i class="fa-solid fa-trash" style="font-size: 0.85em;"></i>
-                        </button>
-                        <?php endif; ?>
-                    </div>
-                    <h3 style="margin: 0; font-size: 1.2em; font-weight: 800; padding-right: 140px; color: var(--primary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"><?php echo htmlspecialchars($ev['titulo']); ?></h3>
+                <div style="padding: 20px; border-bottom: 1px solid var(--border); background: <?php echo empty($ev['capa']) ? 'transparent' : 'rgba(0,0,0,0.02)'; ?>;">
+                    <h3 style="margin: 0; font-size: 1.15em; font-weight: 800; color: var(--primary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"><?php echo htmlspecialchars($ev['titulo']); ?></h3>
+                    
                     <div style="font-size: 0.8em; margin-top: 8px; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
                         <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-regular fa-calendar" style="color: var(--primary);"></i> <?php echo date('d/m/Y \à\s H:i', strtotime($ev['data_evento'])); ?></span>
                         <?php if(!empty($ev['local'])): ?>
                             <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-location-dot" style="color: var(--primary);"></i> <?php echo htmlspecialchars($ev['local']); ?></span>
                         <?php endif; ?>
                     </div>
+
+                    <?php if($role === ROLE_ADMIN || $role === ROLE_SUPERADMIN || $role === ROLE_EDITOR): ?>
+                    <div style="display: flex; gap: 8px; margin-top: 15px; padding-top: 12px; border-top: 1px dashed var(--border);">
+                        <button onclick='abrirEditarEvento(<?php echo htmlspecialchars(json_encode($ev, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, "UTF-8"); ?>)' class="btn btn-sm" style="flex: 1; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; background: white; border: 1px solid var(--border); color: var(--text-muted); font-size: 0.75em;" title="Editar Evento">
+                            <i class="fa-solid fa-pen"></i> Editar
+                        </button>
+                        <button onclick='abrirRelatorio(<?php echo $ev['id']; ?>)' class="btn btn-sm" style="height: 32px; width: 32px; border-radius: 8px; padding: 0; display: flex; align-items: center; justify-content: center; background: white; border: 1px solid var(--border); color: var(--text-muted);" title="Ver Relatório">
+                            <i class="fa-solid fa-chart-pie"></i>
+                        </button>
+                        <button onclick='copiarLinkPublico(<?php echo $ev['id']; ?>)' class="btn btn-sm" style="height: 32px; width: 32px; border-radius: 8px; padding: 0; display: flex; align-items: center; justify-content: center; background: white; border: 1px solid var(--border); color: var(--text-muted);" title="Copiar Link Público">
+                            <i class="fa-solid fa-link"></i>
+                        </button>
+                        <button onclick="confirmarDelete('evento', <?php echo $ev['id']; ?>, '<?php echo addslashes($ev['titulo']); ?>')" class="btn btn-danger btn-sm" style="height: 32px; width: 32px; border-radius: 8px; padding: 0; display: flex; align-items: center; justify-content: center; background: #fff1f2; color: #ef4444; border: 1px solid #fecaca;" title="Excluir Evento">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <div style="padding: 15px 20px; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                    <p style="font-size: 0.88em; color: var(--text-muted); line-height: 1.5; margin-bottom: 15px; flex-shrink: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;"><?php echo htmlspecialchars($ev['descricao'] ?? ''); ?></p>
+                    <div style="margin-bottom: 15px; flex-shrink: 0;">
+                        <p style="font-size: 0.88em; color: var(--text-muted); line-height: 1.5; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;"><?php echo htmlspecialchars($ev['descricao'] ?? ''); ?></p>
+                        <a href="javascript:void(0)" onclick='verDetalhesEvento(<?php echo htmlspecialchars(json_encode($ev, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, "UTF-8"); ?>)' style="font-size: 0.8em; color: var(--primary); font-weight: 700; text-decoration: none;">Ver detalhes <i class="fa-solid fa-chevron-right" style="font-size: 0.8em;"></i></a>
+                    </div>
                     
                     <?php 
                         try {
@@ -6219,6 +6230,84 @@ elseif ($pagina === 'event_report'):
             </div>
         </div>
     </div>
+    <!-- Modal Visualizar Detalhes do Evento -->
+    <div class="modal-overlay" id="modalVerEvento" style="z-index: 10000;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 id="ver_ev_titulo" style="color: var(--primary); font-weight: 900; font-size: 1.4em;">Detalhes do Evento</h2>
+                <button class="close-modal" onclick="closeModal('modalVerEvento')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body custom-scrollbar" style="max-height: 80vh; overflow-y: auto;">
+                <div id="ver_ev_capa_container" style="width: 100%; height: 220px; border-radius: 12px; overflow: hidden; margin-bottom: 20px; display: none; position: relative; background: #000;">
+                    <img id="ver_ev_capa" src="" style="width: 100%; height: 100%; object-fit: contain; position: relative; z-index: 2;">
+                    <div id="ver_ev_capa_blur" style="position: absolute; inset: 0; background-size: cover; background-position: center; filter: blur(20px) brightness(0.4); opacity: 0.7; transform: scale(1.2);"></div>
+                </div>
+
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <div style="background: #f8fafc; padding: 10px 15px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 0.85em; flex: 1; min-width: 140px;">
+                        <i class="fa-regular fa-calendar" style="color: var(--primary); margin-right: 6px;"></i> <strong id="ver_ev_data"></strong>
+                    </div>
+                    <div id="ver_ev_local_container" style="background: #f8fafc; padding: 10px 15px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 0.85em; flex: 1; min-width: 140px;">
+                        <i class="fa-solid fa-location-dot" style="color: var(--primary); margin-right: 6px;"></i> <strong id="ver_ev_local"></strong>
+                    </div>
+                </div>
+
+                <div style="background: rgba(110,43,58,0.03); border-left: 4px solid var(--primary); padding: 15px; border-radius: 0 12px 12px 0; margin-bottom: 25px;">
+                    <h4 style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;">Descrição Completa</h4>
+                    <p id="ver_ev_descricao" style="font-size: 0.95em; color: var(--text-main); line-height: 1.7; white-space: pre-wrap; margin: 0;"></p>
+                </div>
+
+                <div id="ver_ev_mapa_container" style="margin-top: 10px; display: none;">
+                    <a id="ver_ev_mapa_link" href="" target="_blank" class="btn btn-outline btn-block" style="border-radius: 12px; font-weight: 700; color: var(--primary); border-color: var(--primary);">
+                        <i class="fa-solid fa-location-arrow"></i> Ver no Google Maps / Abrir Link
+                    </a>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline btn-block" onclick="closeModal('modalVerEvento')">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function verDetalhesEvento(ev) {
+        document.getElementById('ver_ev_titulo').innerText = ev.titulo;
+        // Fix for iOS/Safari date formatting by replacing space with T if needed
+        const dateStr = ev.data_evento ? ev.data_evento.replace(' ', 'T') : '';
+        document.getElementById('ver_ev_data').innerText = dateStr ? new Date(dateStr).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).replace(',', ' às') : 'Data não informada';
+        document.getElementById('ver_ev_descricao').innerText = ev.descricao || 'Nenhuma descrição fornecida.';
+        
+        // Capa
+        const capaCont = document.getElementById('ver_ev_capa_container');
+        if (ev.capa) {
+            document.getElementById('ver_ev_capa').src = ev.capa;
+            document.getElementById('ver_ev_capa_blur').style.backgroundImage = `url('${ev.capa}')`;
+            capaCont.style.display = 'block';
+        } else {
+            capaCont.style.display = 'none';
+        }
+
+        // Local
+        const localCont = document.getElementById('ver_ev_local_container');
+        if (ev.local) {
+            document.getElementById('ver_ev_local').innerText = ev.local;
+            localCont.style.display = 'block';
+        } else {
+            localCont.style.display = 'none';
+        }
+
+        // Mapa
+        const mapaCont = document.getElementById('ver_ev_mapa_container');
+        if (ev.mapa_link) {
+            document.getElementById('ver_ev_mapa_link').href = ev.mapa_link;
+            mapaCont.style.display = 'block';
+        } else {
+            mapaCont.style.display = 'none';
+        }
+
+        openModal('modalVerEvento');
+    }
+    </script>
 
 </body>
 </html>
